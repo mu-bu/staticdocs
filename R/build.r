@@ -34,6 +34,7 @@ build_package <- function(package, base_path = NULL, examples = NULL) {
   package$demos <- build_demos(package)
   package$readme <- readme(package)
   build_references(package)
+  package$citation <- build_citation(package)
   
   build_index(package)
   
@@ -138,6 +139,7 @@ build_vignettes <- function(package) {
   list(vignette=unname(apply(cbind(filename, title), 1, as.list)))
 }
 
+<<<<<<< HEAD
 #' Creates a Bibliography Page
 #' 
 #' @param package package name or object
@@ -165,6 +167,23 @@ build_references <- function(package, base_path=NULL){
 	render_template("index-references", package, outfile)
 	# add dedicated head link
 	add_headlink(package, basename(outfile), 'References')
+
+}
+
+capfirst <- function(s) {
+	paste(toupper(substring(s,1,1)), tolower(substring(s,2)), sep='')
+}
+
+#' @importFrom utils readCitationFile
+build_citation <- function(package){
+	
+	citfile <- inst_path('CITATION', package=package)
+	if( !file.exists(citfile) ) return(package)
+	message('Rendering CITATION')
+	package[capfirst(names(package))] <- package
+	cit <- readCitationFile(citfile, meta=package)
+	# only extract first one
+	gsub("(^<p>)|(</p>$)","",format(cit[[1L]], style='html'))
 	
 }
 

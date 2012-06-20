@@ -139,7 +139,6 @@ build_vignettes <- function(package) {
   list(vignette=unname(apply(cbind(filename, title), 1, as.list)))
 }
 
-<<<<<<< HEAD
 #' Creates a Bibliography Page
 #' 
 #' @param package package name or object

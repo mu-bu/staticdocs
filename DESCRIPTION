@@ -21,7 +21,7 @@ Imports:
     digest,
     rjson,
     grid,
-    bibtex
+    bibtex,
     utils
 Collate:
     'replay-html.r'

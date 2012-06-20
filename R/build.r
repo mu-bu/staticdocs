@@ -175,15 +175,15 @@ capfirst <- function(s) {
 
 #' @importFrom utils readCitationFile
 build_citation <- function(package){
-	
-	citfile <- inst_path('CITATION', package=package)
-	if( !file.exists(citfile) ) return(package)
-	message('Rendering CITATION')
-	package[capfirst(names(package))] <- package
-	cit <- readCitationFile(citfile, meta=package)
-	# only extract first one
-	gsub("(^<p>)|(</p>$)","",format(cit[[1L]], style='html'))
-	
+  citfile <- inst_path('CITATION', package = package)
+  if( !file.exists(citfile) ) return(package)
+  message('Rendering CITATION')
+  package[capfirst(names(package))] <- package
+  cit <- readCitationFile(citfile, meta = package)
+  # only extract first one
+  package$citation <- gsub("(^<p>)|(</p>$)", "", format(cit[[1L]], style = 'html'))
+  # return modified package
+  package
 }
 
 build_demos <- function(package, index, base_path=NULL) {

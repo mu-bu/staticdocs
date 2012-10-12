@@ -72,6 +72,8 @@ replay_html.recordedplot <- function(x, package, name_prefix, obj_id, ...) {
   
   if (!file.exists(path)) { 
     png(path, width = 400, height = 400, res = 96)
+#	TODO: bug here: the device dimension does not match the one used at evaluation time
+#	png(path, width=7, height=7, unit='in', res=72)
     on.exit(dev.off())
     print(x)
   }

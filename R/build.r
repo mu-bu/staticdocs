@@ -73,9 +73,10 @@ build_topics <- function(package) {
       env = new.env(parent = globalenv()), 
       topic = str_replace(basename(paths[[i]]), "\\.html$", ""),
       package = package)
+    html$pagetitle <- html$name
 
-    html$package <- package$package
-    render_template("topic", html, paths[[i]])
+    html$package <- package[c("package", "version")]
+    render_page(package, "topic", html, paths[[i]])
     graphics.off()
 
     if ("internal" %in% html$keywords) {
@@ -136,7 +137,7 @@ build_vignettes <- function(package) {
     str_match(contents, "\\\\VignetteIndexEntry\\{(.*?)\\}")[2]
   })  
   
-  list(vignette=unname(apply(cbind(filename, title), 1, as.list)))
+  list(vignette = unname(apply(cbind(filename, title), 1, as.list)))
 }
 
 #' Creates a Bibliography Page
@@ -206,22 +207,26 @@ build_demos <- function(package, index, base_path=NULL) {
     package$demo <- replay_html(demo_expr,
       package = package, 
       name = str_c(pieces[i], "-"))
-    package$title <- title[i]
-    render_template("demo", package, 
+    package$pagetitle <- title[i]
+    render_page(package, "demo", package, 
       file.path(package$base_path, filename[i]))
   }
   
-  package$demos <- list(demo=unname(apply(cbind(filename, title), 1, as.list)))
-  
-  # render dedicated file
-  outfile <- file.path(package$base_path, '_DEMOS.html')
-  message("Generating ", basename(outfile))
-  render_template("index-demos", package, outfile)
-  # add dedicated head link
-  add_headlink(package, basename(outfile), 'Demos')
-  
-  # return updated package
-  package$demos
+#<<<<<<< HEAD
+#  package$demos <- list(demo=unname(apply(cbind(filename, title), 1, as.list)))
+#  
+#  # render dedicated file
+#  outfile <- file.path(package$base_path, '_DEMOS.html')
+#  message("Generating ", basename(outfile))
+#  render_template("index-demos", package, outfile)
+#  # add dedicated head link
+#  add_headlink(package, basename(outfile), 'Demos')
+#  
+#  # return updated package
+#  package$demos
+#=======
+  list(demo = unname(apply(cbind(filename, title), 1, as.list)))
+#>>>>>>> upstream/master
 }
 
 # wrap a content into the main layout

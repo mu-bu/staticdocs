@@ -1,32 +1,25 @@
-inst_path <- function(..., package=NULL) {
-	
-	path <-	
-	if( is.null(package) ){ # return inst path from staticdocs
-		envname <- environmentName(environment(inst_path))
-		
-		if (envname == "staticdocs") {
-			# Probably in package
-			system.file(package = "staticdocs")
-		} else {
-			# Probably in development
-			srcref <- attr(find_template, "srcref")
-			path <- dirname(dirname(attr(srcref, "srcfile")$filename))
-			file.path(path, "inst")
-		}
-	}else{ # return inst directory from package object
-		package <- package_info(package)
-		
-		path <- package$path
-		metadir <- file.path(path, 'Meta')
-		if( file_test('-d', metadir) ){ # installed package
-			path 
-		}else{ # development package: append 'inst' to path
-			file.path(path, 'inst') 
-		}
-		
-	}
-	# add extra path
-	file.path(path, ...)
+inst_path <- function() {
+  if (is.null(dev_meta("staticdocs"))) {
+    # staticdocs is probably installed
+    system.file(package = "staticdocs")
+  } else {
+    # staticdocs was probably loaded with devtools
+    file.path(getNamespaceInfo("staticdocs", "path"), "inst")
+  }
+}
+
+# Return the staticdocs path for a package
+# Could be in pkgdir/inst/staticdocs/ (for non-installed source packages)
+# or in pkgdir/staticdocs/ (for installed packages)
+pkg_sd_path <- function(package) {
+  pathsrc <- file.path(package$path, "inst", "staticdocs")
+  pathinst <- file.path(package$path, "staticdocs")
+   
+  if (dir.exists(pathsrc))
+    pathsrc
+  else if (dir.exists(pathinst))
+    pathinst
+    
 }
 
 "%||%" <- function(a, b) {
@@ -43,7 +36,7 @@ markdown <- function(x = NULL, path = NULL) {
     if (is.null(x) || x == "") return("")
   }
   
-  (markdownToHTML(text = x, file = path,
+  (markdownToHTML(text = x, file = path, fragment.only = TRUE,
     options = c("safelink", "use_xhtml", "smartypants")))
 }
 

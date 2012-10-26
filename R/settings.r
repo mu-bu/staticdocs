@@ -1,7 +1,6 @@
-#' @importFrom rjson fromJSON
-load_settings <- function(package_path) {
-  path <- file.path(package_path, "staticdocs.r")
-  if (!file.exists(path)) return(list())
+load_settings <- function(package) {
+  path <- file.path(pkg_sd_path(package), "index.r")
+  if ( !file.exists(path)) return(list())
 
   source(path)$value
 }

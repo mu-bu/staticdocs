@@ -14,7 +14,7 @@ inst_path <- function() {
 pkg_sd_path <- function(package) {
   pathsrc <- file.path(package$path, "inst", "staticdocs")
   pathinst <- file.path(package$path, "staticdocs")
-   
+  dir.exists <- function(...) file_test('-d', ...) 
   if (dir.exists(pathsrc))
     pathsrc
   else if (dir.exists(pathinst))

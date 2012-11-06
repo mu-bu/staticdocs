@@ -11,6 +11,11 @@ src_highlight <- function(text, index) {
   formatter <- function(tokens, styles, ...) {
     funcall <- styles == "functioncall"
     for(i in which(funcall)) {
+      if( !nchar(tokens[i]) ){
+        message("Empty help topic near "
+               , str_c(tokens[max(1,i-3):min(i+3, length(tokens))]), collapse = "\n")
+        next
+      } 
       loc <- find_topic(tokens[i], NULL, index = index)
       if (is.null(loc)) {
         message("Can't find help topic ", tokens[i])

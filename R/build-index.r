@@ -29,21 +29,16 @@ build_index <- function(package) {
   package$sections <- sections
   package$rd <- NULL
   
+  #generate dedicated documentation index page
+  manout <- file.path(package$base_path, "_MAN.html")
+  message("Generating ", basename(manout))
+  render_page(package, "man", package, manout)
+  # add head link to index page
+  add_headlink(package, basename(manout), 'Documentation', prepend=TRUE)
+  
   render_icons(package)
-#<<<<<<< HEAD
-#  render_template("index", package, out)
-#  
-#  #generate dedicated documentation index page
-#  manout <- file.path(package$base_path, "_MAN.html")
-#  message("Generating ", basename(manout))
-#  render_template("index-man", package, manout)
-#  # add head link to index page
-#  add_headlink(package, basename(manout), 'Documentation', prepend=TRUE)
-#  
-#=======
   package$pagetitle <- "Index"
   render_page(package, "index", package, out)
-#>>>>>>> upstream/master
 }
 
 build_section <- function(section, package) {

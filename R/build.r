@@ -28,6 +28,7 @@ build_package <- function(package, base_path = NULL, examples = NULL) {
 
   # reset headlinks
   add_headlink(NULL)
+  package$navbar <- '{{{navbar}}}'
   
   package$topics <- build_topics(package)
   package$vignettes <- build_vignettes(package)
@@ -76,7 +77,8 @@ build_topics <- function(package) {
     html$pagetitle <- html$name
 
     html$package <- package[c("package", "version")]
-    render_page(package, "topic", html, paths[[i]])
+    html$indextarget <- "_MAN.html"
+    render_page(package, "topic", html, paths[[i]], nonav=TRUE)
     graphics.off()
 
     if ("internal" %in% html$keywords) {
@@ -121,6 +123,16 @@ build_vignettes <- function(package) {
   if (length(path) == 0) return()
   
   message("Building vignettes")
+  # make quick install to ensure everything is there for building
+  tmplib <- tempfile()
+  dir.create(tmplib)
+  ol <- .libPaths()
+  .libPaths(c(tmplib, .libPaths()))
+  on.exit({
+        .libPaths(ol)
+        unlink(tmplib, recursive=TRUE)
+  }) 
+  pkgmaker::quickinstall(package$path, tmplib)
   buildVignettes(dir = package$path)
   
   message("Copying vignettes")
@@ -153,18 +165,19 @@ build_references <- function(package, base_path=NULL){
 	package <- package_info(package, base_path=base_path)
 	
 	# look for reference file in inst/
-	ref <- inst_path('REFERENCES.bib', package=package)
+	ref <- file.path(inst_path(package), 'REFERENCES.bib')
 	if( !file.exists(ref) ) return()
 	
 	outfile <- file.path(package$base_path, '_REFERENCES.html') 
 	message("Generating ", basename(outfile))
 	# load bibtex items
+  library(bibtex)
 	bibs <- read.bib(ref)
 	# format
 	package$references <- lapply(format(bibs, style='html'), function(x) list(bibitems=x))
 	
 	# render dedicated file
-	render_template("index-references", package, outfile)
+	render_page(package, "references", package, outfile)
 	# add dedicated head link
 	add_headlink(package, basename(outfile), 'References')
 
@@ -176,7 +189,7 @@ capfirst <- function(s) {
 
 #' @importFrom utils readCitationFile
 build_citation <- function(package){
-  citfile <- inst_path('CITATION', package = package)
+  citfile <- file.path(inst_path(package), 'CITATION')
   if( !file.exists(citfile) ) return()
   message('Rendering CITATION')
   package[capfirst(names(package))] <- package
@@ -201,32 +214,34 @@ build_demos <- function(package, index, base_path=NULL) {
   title <- pieces[, 2]
   
   for(i in seq_along(title)) {
-    demo_code <- readLines(file.path(demo_dir, in_path[i]))
+    if( !file.exists(dfile <- in_path[i]) )
+      dfile <- sub("\\.r$", ".R", dfile)
+    message("Evaluating demo ", basename(dfile))
+    demo_code <- readLines(file.path(demo_dir, dfile))
     demo_expr <- evaluate(demo_code, new.env(parent = globalenv()))
 
-    package$demo <- replay_html(demo_expr,
-      package = package, 
-      name = str_c(pieces[i], "-"))
-    package$pagetitle <- title[i]
-    render_page(package, "demo", package, 
-      file.path(package$base_path, filename[i]))
+    message("Generating demo ", filename[i])
+    html <- list()
+    html$demo <- replay_html(demo_expr, package = package, name = str_c(pieces[i], "-"))
+    html$indextarget <- "_DEMOS.html"
+    html$pagetitle <- title[i]
+    html$package <- package
+    render_page(package, "demo", html, 
+      file.path(package$base_path, filename[i]), nonav=TRUE)
   }
   
-#<<<<<<< HEAD
-#  package$demos <- list(demo=unname(apply(cbind(filename, title), 1, as.list)))
-#  
-#  # render dedicated file
-#  outfile <- file.path(package$base_path, '_DEMOS.html')
-#  message("Generating ", basename(outfile))
-#  render_template("index-demos", package, outfile)
-#  # add dedicated head link
-#  add_headlink(package, basename(outfile), 'Demos')
-#  
-#  # return updated package
-#  package$demos
-#=======
-  list(demo = unname(apply(cbind(filename, title), 1, as.list)))
-#>>>>>>> upstream/master
+  
+  package$demos <- list(demo=unname(apply(cbind(filename, title), 1, as.list)))  
+  # render dedicated file
+  outfile <- file.path(package$base_path, '_DEMOS.html')
+  message("Generating ", basename(outfile))
+  render_page(package, "index-demos", package, outfile)
+  # add dedicated head link
+  add_headlink(package, basename(outfile), 'Demos')
+  
+  # return demos
+  package$demos
+
 }
 
 # wrap a content into the main layout
@@ -237,30 +252,8 @@ wrap_page <- local({
 			.cache <<- NULL
 			return()
 		}
-		
-		# append prefix 'layout-' if necessary
-		if( !grepl("^layout", layout) ) layout <- str_c('layout-', layout)
-		
-		# render template once
-		if( is.null(.cache) ){
-			lpackage <- package
-			# escape tag {{{contents}}}
-			lpackage$contents <- "{{{contents}}}"
-			lpackage$headlinks <- add_headlink()
-			# generate navigation bar
-			lpackage$navbar <- paste(capture.output(render_template("navbar", lpackage)), collapse="\n")
-			# render outer layout
-			.cache <<- capture.output(render_template(layout, lpackage))
-		}
 				
-		sapply(file, function(f){
-			# collapse contents
-			contents <- paste(readLines(f, warn=FALSE), collapse="\n")
-			# substitute in layout template
-			rendered <- whisker.render(.cache, list(contents=contents))
-			cat(rendered, file = f)
-		})
-		invisible()
+    
 	}
 })
 
@@ -299,7 +292,17 @@ build_pages <- function(package, base_path=NULL, layout='default') {
   # substitute head links in all html files starting with '_'
   files <- dir(outpath, pattern="^_.*\\.html", full.names=TRUE)
   files <- c(file.path(outpath,'index.html'), files)
-  message("Wrapping pages in layout:", layout)
-  wrap_page(package, files, layout=layout)
+  message("Wrapping pages ", paste(basename(files), collapse=", ")," in layout:", layout)
+  
+  package$headlinks <- add_headlink()
+  navbar <- paste(render_template(package, "navbar", '', package), collapse="\n")
+	sapply(files, function(f){
+      # collapse contents
+      contents <- paste(readLines(f, warn=FALSE), collapse="\n")
+      # substitute in layout template
+      rendered <- whisker.render(contents, list(navbar=navbar))
+      cat(rendered, file = f)
+  })
+	invisible()
 	
 }

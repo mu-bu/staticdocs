@@ -5,11 +5,13 @@
 #' @param path location to create file.  If \code{""} (the default), 
 #'   prints to standard out.
 #' @export
-render_page <- function(package, name, data, path = "") {
+render_page <- function(package, name, data, path = "", nonav=FALSE) {
   # render template components
   pieces <- c("head", "navbar", "header", "content", "footer")
   components <- lapply(pieces, render_template, package = package, name, data)
   names(components) <- pieces
+  if( !nonav )
+    components$navbar <- "{{{navbar}}}"
   
   # render complete layout
   out <- render_template(package, "layout", name, components)

@@ -1,10 +1,13 @@
-inst_path <- function() {
+inst_path <- function(package="staticdocs") {
+  
+  # handle the case of a list (eg., a package object)
+  if( is.list(package) && !is.null(package$package) ) package <- package$package
   if (is.null(dev_meta("staticdocs"))) {
     # staticdocs is probably installed
-    system.file(package = "staticdocs")
+    system.file(package = package)
   } else {
     # staticdocs was probably loaded with devtools
-    file.path(getNamespaceInfo("staticdocs", "path"), "inst")
+    file.path(getNamespaceInfo(package, "path"), "inst")
   }
 }
 

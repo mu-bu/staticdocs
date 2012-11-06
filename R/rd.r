@@ -56,7 +56,8 @@ rd_path <- function(topic, package = NULL) {
   res[[1]]
 }
 
-find_topic <- function(alias, package = NULL, index) {  
+find_topic <- function(alias, package = NULL, index) {
+  
   # Current package, so look in index first
   if (is.null(package)) {
     match <- Position(function(x) any(x == alias), index$alias)

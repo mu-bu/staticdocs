@@ -3,6 +3,40 @@
 
 replay_html <- function(x, ...) UseMethod("replay_html", x)
 
+eval_replay_html <- function(x, envir, package, prefix, ...){
+  
+  library(evaluate)
+  # remove old files
+  ifiles <- list.files(package$base_path, pattern=str_c('^', prefix), full.names=TRUE)
+  if( length(ifiles) ){
+    message("Removing plot files [", prefix, ']')
+    unlink(ifiles)
+  }
+  # setup sequential graphic file device
+  fformat <- file.path(package$base_path, str_c(prefix, '%i.png'))
+  on.exit(dev.off())
+#  png(fformat, width=400, height=400, res=96)
+  png(fformat, width=7, height=7, unit='in', res=72)
+  
+  ptext <- parse_all(x)
+  # loop over the expressions and check if any graphic was generated
+  i <- 1
+  res <- sapply(ptext$src, function(src, ...){
+        expr <- evaluate(src, envir)
+        html <- replay_html(expr, package = package, ...)
+        while( file.exists(name <- sprintf(fformat, i)) ){
+          html <- str_c(html,
+                  str_c("<p><img src='", name, "' alt='' width='400' height='400' /></p>"))
+          i <<- i + 1
+        }
+        html
+      }
+  , ...)
+  
+  # concatenate all results
+  str_c(res, collapse="")
+}
+
 #' @importFrom evaluate is.source
 #' @S3method replay_html list
 replay_html.list <- function(x, ...) {

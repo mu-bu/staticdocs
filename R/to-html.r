@@ -181,16 +181,9 @@ to_html.examples <- function(x, package, topic = "unknown", env = new.env(parent
 
   # First element of examples tag is always empty
   text <- to_html.TEXT(x[-1], ...)
-#  TODO: possibly fix here for adapting the device dimension
-#  # set graphic device size as in replay
-#	
-#  f <- str_c(tempfile(), '%i.png')
-#  on.exit(par( unlink(f) ))
-#  png(f, width=400, height=400, res=96)
-  expr <- evaluate(text, env)
-#  dev.off()
+#  expr <- evaluate(text, env)
   
-  replay_html(expr, package = package, name = str_c(topic, "-"))
+  eval_replay_html(text, envir=env, package = package, prefix = str_c(topic, "-ex"))
 }
 
 # Arguments ------------------------------------------------------------------

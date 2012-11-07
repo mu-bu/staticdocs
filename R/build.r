@@ -218,11 +218,12 @@ build_demos <- function(package, index, base_path=NULL) {
       dfile <- sub("\\.r$", ".R", dfile)
     message("Evaluating demo ", basename(dfile))
     demo_code <- readLines(file.path(demo_dir, dfile))
-    demo_expr <- evaluate(demo_code, new.env(parent = globalenv()))
+#    demo_expr <- evaluate(demo_code, new.env(parent = globalenv()))
 
     message("Generating demo ", filename[i])
     html <- list()
-    html$demo <- replay_html(demo_expr, package = package, name = str_c(pieces[i], "-"))
+    html$demo <- eval_replay_html(demo_code, envir=new.env(parent = globalenv())
+                            , package = package, prefix = str_c(pieces[i], "-demo"))
     html$indextarget <- "_DEMOS.html"
     html$pagetitle <- title[i]
     html$package <- package

@@ -13,7 +13,8 @@ eval_replay_html <- function(x, envir, package, prefix, ...){
     unlink(ifiles)
   }
   # setup sequential graphic file device
-  fformat <- file.path(package$base_path, str_c(prefix, '%i.png'))
+  fprefix <- str_c(prefix, '%i.png')
+  fformat <- file.path(package$base_path, fprefix)
   on.exit(dev.off())
 #  png(fformat, width=400, height=400, res=96)
   png(fformat, width=7, height=7, unit='in', res=72)
@@ -24,9 +25,9 @@ eval_replay_html <- function(x, envir, package, prefix, ...){
   res <- sapply(ptext$src, function(src, ...){
         expr <- evaluate(src, envir)
         html <- replay_html(expr, package = package, ...)
-        while( file.exists(name <- sprintf(fformat, i)) ){
+        while( file.exists(file.path(package$base_path, img <- sprintf(fprefix, i))) ){
           html <- str_c(html,
-                  str_c("<p><img src='", name, "' alt='' width='400' height='400' /></p>"))
+                  str_c("<p><img src='", img, "' alt='' width='400' height='400' /></p>"))
           i <<- i + 1
         }
         html

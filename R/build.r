@@ -122,7 +122,6 @@ build_vignettes <- function(package) {
     full.names = TRUE)
   if (length(path) == 0) return()
   
-  message("Building vignettes")
   # make quick install to ensure everything is there for building
   tmplib <- tempfile()
   dir.create(tmplib)
@@ -132,16 +131,22 @@ build_vignettes <- function(package) {
         .libPaths(ol)
         unlink(tmplib, recursive=TRUE)
   }) 
-  pkgmaker::quickinstall(package$path, tmplib)
-  buildVignettes(dir = package$path)
+  message("Building vignettes (", tmplib, ")")
+  pkgmaker::quickinstall(package$path, tmplib, vignettes=TRUE)
+  #buildVignettes(dir = package$path)
   
   message("Copying vignettes")
+  path <- list.files(file.path(tmplib, package$package, 'doc'), pattern="\\.Rnw$", full.names=TRUE)
+  if (length(path) == 0) return()
   src <- str_replace(path, "\\.Rnw$", ".pdf")
   filename <- basename(src)
+  message(paste(filename, collapse="\n"))
+  
+  # create vignettes directory
   dest <- file.path(package$base_path, "vignettes")
-
   if (!file.exists(dest)) dir.create(dest)
-  file.copy(src, file.path(dest, filename), overwrite=TRUE)  
+  # copy pdf files
+  file.copy(src, file.path(dest, filename), overwrite=TRUE)
 
   # Extract titles
   title <- vapply(path, FUN.VALUE = character(1), function(x) {

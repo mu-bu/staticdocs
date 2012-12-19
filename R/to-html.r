@@ -57,7 +57,14 @@ to_html.Rd_doc <- function(x, ...) {
 # A list of elements should stay as a list
 #' @S3method to_html list
 to_html.list <- function(x, ...) {
-  lapply(x, to_html, ...)
+  lapply(x, function(x, ...){
+        tryCatch( to_html(x, ...),
+            error = function(e){
+              message("Error in Rd HTML conversion:\n"
+                      , capture.output(show(x)))
+              stop(e)
+            })
+  }, ...)
 }
 
 # Elements that don't return anything ----------------------------------------
@@ -156,6 +163,8 @@ to_html.description <- function(x, ...) parse_section(x, "Description", ...)
 to_html.value <- function(x, ...) parse_section(x, "Value", ...)
 #' @S3method to_html references
 to_html.references <- function(x, ...) parse_section(x, "References", ...)
+#' @S3method to_html source
+to_html.source <- function(x, ...) parse_section(x, "Source", ...)
 #' @S3method to_html format
 to_html.format <- function(x, ...) parse_section(x, "Format", ...)
 #' @S3method to_html note
@@ -167,7 +176,17 @@ to_html.section <- function(x, ...) {
 
 parse_section <- function(x, title, ...) {
   text <- to_html.TEXT(x, ...)
-  paras <- str_trim(str_split(text, "\\n\\s*\\n")[[1]])
+  # format only outside <pre></pre> sections
+  if( grepl("<pre>", text) ){
+    m <- str_match_all(text, "(.*)(<pre>.*</pre>)(.*)")[[1]]
+    paras <- apply(m, 1L, function(y){
+          list(str_trim(str_split(y[2], "\\n\\s*\\n")[[1]])
+             , str_trim(y[3])
+             , str_trim(str_split(y[4], "\\n\\s*\\n")[[1]])
+          )
+        })
+    paras <- unlist(paras)
+  }else paras <- str_trim(str_split(text, "\\n\\s*\\n")[[1]])
   
   list(title = title, contents = paras)
 }
@@ -225,7 +244,9 @@ to_html.deqn <- function(x, ...) {
 #' @S3method to_html url
 to_html.url <- function(x, ...) {
   stopifnot(length(x) == 1)
-  str_c("<a href = '", x[[1]], "'>", x[[1]], "</a>")
+  x <- unlist(x)
+  str_c("<a href = '", paste(x, collapse=''), "'>"
+          , paste(gsub("%20", " ", x), collapse=' '), "</a>")
 }
 #' @S3method to_html href
 to_html.href <- function(x, ...) {
@@ -367,7 +388,10 @@ to_html.docType <- function(...) NULL
 to_html.Sexpr <- function(x, env, ...) {
   code <- to_html.TEXT(x)
   expr <- eval(parse(text = code), env)
-
+  # format if necessary
+  if( !is.character(expr) ){
+    expr <- format(expr)
+  }
   con <- textConnection(expr)
   on.exit(close(con))
 
@@ -380,7 +404,7 @@ to_html.Sexpr <- function(x, env, ...) {
 #' @S3method to_html if
 to_html.if <- function(x, ...) {
   if (x[[1]] != "html") return()
-  x[[2]]
+  to_html(x[[2]])
 }
 
 #' @S3method to_html ifelse

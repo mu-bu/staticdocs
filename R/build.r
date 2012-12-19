@@ -19,9 +19,30 @@
 #' @import stringr
 #' @importFrom devtools load_all
 #' @aliases staticdocs-package
-build_package <- function(package, base_path = NULL, examples = NULL) {
-  load_all(package)
+build_package <- function(package, base_path = NULL, examples = NULL, rd_knitr=FALSE) {
   
+  
+  # init install lib
+  install_lib(NULL)
+  ol <- .libPaths()
+  on.exit({
+      if( !is.null(tmplib <- install_lib()) ){
+        .libPaths(ol)
+        unlink(tmplib, recursive=TRUE)
+       }
+  })
+
+  if( rd_knitr ){
+    pkg <- as.package(package)
+    install_lib(pkg)
+    library(pkg$package, character.only=TRUE)
+  }else{
+    #load_all(package)
+    pkg <- as.package(package)
+    install_lib(pkg)
+    library(pkg$package, character.only=TRUE)
+  }
+
   package <- package_info(package, base_path, examples)
   if (!file.exists(package$base_path)) dir.create(package$base_path)
   copy_bootstrap(base_path)
@@ -30,6 +51,7 @@ build_package <- function(package, base_path = NULL, examples = NULL) {
   add_headlink(NULL)
   package$navbar <- '{{{navbar}}}'
   
+  package$rd_knitr <- rd_knitr
   package$topics <- build_topics(package)
   package$vignettes <- build_vignettes(package)
   package$demos <- build_demos(package)
@@ -46,6 +68,127 @@ build_package <- function(package, base_path = NULL, examples = NULL) {
     browseURL(normalizePath(file.path(base_path, "index.html")))
   }
   invisible(TRUE)
+}
+
+install_lib <- local({
+      .lib <- NULL
+      function(package){
+        if( missing(package) || !is.null(.lib) ) return(.lib)
+        if( is.null(package) ){
+          .lib <<- NULL
+          return(.lib)
+        }
+        
+        # install package
+        tmplib <- tempfile()
+        dir.create(tmplib)
+        .libPaths(c(tmplib, file.path(package$path, '..', 'lib'), .libPaths()))
+        pkgmaker::quickinstall(package$path, tmplib, vignettes=TRUE)
+        .lib <<- tmplib
+        .lib
+      }
+ })
+
+knit_html <- function(rd, out, links = tools::findHTMLlinks()){
+  
+  p <- basename(out)
+  message("** knitting documentation of ", p)
+  f <- tempfile()
+  on.exit( unlink(f) )
+  tools::Rd2HTML(rd, f, package = '', Links = links, no_links = is.null(links), stages = "render")
+  message('DONE')
+  txt = readLines(f, warn = FALSE)
+  if (length(i <- grep("<h3>Examples</h3>", txt)) == 1L && 
+      length(grep("</pre>", txt[i:length(txt)]))) {
+    i0 = grep("<pre>", txt)
+    i0 = i0[i0 > i][1L] - 1L
+    i1 = grep("</pre>", txt)
+    i1 = i1[i1 > i0][1L] + 1L
+    tools::Rd2ex(rd, ef <- tempfile())
+    ex = readLines(ef, warn = FALSE)
+    ex = ex[-(1L:grep("### ** Examples", ex, fixed = TRUE))]
+    ex = c("```{r}", ex, "```")
+    opts_chunk$set(fig.path = str_c("figure/", p, "-"), 
+        tidy = FALSE)
+    res = try(knit2html(text = ex, envir = parent.frame(2), 
+            fragment.only = TRUE))
+    if (inherits(res, "try-error")) {
+      res = ex
+      res[1] = "<pre><code class=\"r\">"
+      res[length(res)] = "</code></pre>"
+    }
+    txt = c(txt[1:i0], res, txt[i1:length(txt)])
+    txt = sub("</head>", "\n<link rel=\"stylesheet\" href=\"highlight.css\">\n<script src=\"highlight.pack.js\"></script>\n<script>hljs.initHighlightingOnLoad();</script>\n</head>", 
+        txt)
+  }
+  else message("no examples found for ", p)
+  writeLines(txt, out)
+}
+
+
+function (pkg, links = tools::findHTMLlinks(), frame = TRUE) 
+{
+  library(pkg, character.only = TRUE)
+  optc = opts_chunk$get()
+  on.exit(opts_chunk$set(optc))
+  file.copy(system.file("misc", c("highlight.css", "highlight.pack.js", 
+                      "R.css"), package = "knitr"), "./")
+  pkgRdDB = tools:::fetchRdDB(file.path(find.package(pkg), 
+                  "help", pkg))
+  force(links)
+  topics = names(pkgRdDB)
+  for (p in topics) {
+    message("** knitting documentation of ", p)
+    tools::Rd2HTML(pkgRdDB[[p]], f <- tempfile(), package = pkg, 
+        Links = links, no_links = is.null(links), stages = "render")
+    txt = readLines(f, warn = FALSE)
+    if (length(i <- grep("<h3>Examples</h3>", txt)) == 1L && 
+        length(grep("</pre>", txt[i:length(txt)]))) {
+      i0 = grep("<pre>", txt)
+      i0 = i0[i0 > i][1L] - 1L
+      i1 = grep("</pre>", txt)
+      i1 = i1[i1 > i0][1L] + 1L
+      tools::Rd2ex(pkgRdDB[[p]], ef <- tempfile())
+      ex = readLines(ef, warn = FALSE)
+      ex = ex[-(1L:grep("### ** Examples", ex, fixed = TRUE))]
+      ex = c("```{r}", ex, "```")
+      opts_chunk$set(fig.path = str_c("figure/", p, "-"), 
+          tidy = FALSE)
+      res = try(knit2html(text = ex, envir = parent.frame(2), 
+              fragment.only = TRUE))
+      if (inherits(res, "try-error")) {
+        res = ex
+        res[1] = "<pre><code class=\"r\">"
+        res[length(res)] = "</code></pre>"
+      }
+      txt = c(txt[1:i0], res, txt[i1:length(txt)])
+      txt = sub("</head>", "\n<link rel=\"stylesheet\" href=\"highlight.css\">\n<script src=\"highlight.pack.js\"></script>\n<script>hljs.initHighlightingOnLoad();</script>\n</head>", 
+          txt)
+    }
+    else message("no examples found for ", p)
+    writeLines(txt, str_c(p, ".html"))
+  }
+  unlink("figure/", recursive = TRUE)
+  toc = sprintf("- <a href=\"%s\" target=\"content\">%s</a>", 
+      str_c(topics, ".html"), topics)
+  toc = c(str_c("# ", pkg), "", toc, "", paste("Generated with [knitr](http://yihui.name/knitr) ", 
+                  packageVersion("knitr")))
+  markdown::markdownToHTML(text = paste(toc, collapse = "\n"), 
+      output = "00frame_toc.html", title = str_c("R Documentation of ", 
+          pkg), options = NULL, extensions = NULL, stylesheet = "R.css")
+  txt = readLines(file.path(find.package(pkg), "html", "00Index.html"))
+  unlink("00Index.html")
+  writeLines(gsub("../../../doc/html/", "http://stat.ethz.ch/R-manual/R-devel/doc/html/", 
+                  txt, fixed = TRUE), "00Index.html")
+  if (!frame) {
+    unlink(c("00frame_toc.html", "index.html"))
+    (if (.Platform$OS.type == "windows") 
+        file.copy
+      else file.symlink)("00Index.html", "index.html")
+    return(invisible())
+  }
+  writeLines(sprintf("<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Frameset//EN\" \"http://www.w3.org/TR/html4/frameset.dtd\">\n<html>\n<head><title>Documentation of the %s package</title></head>\n<frameset cols=\"15%%,*\">\n  <frame src=\"00frame_toc.html\">\n  <frame src=\"00Index.html\" name=\"content\">\n</frameset>\n</html>\n", 
+                  pkg), "index.html")
 }
 
 
@@ -66,21 +209,31 @@ build_topics <- function(package) {
   index$title <- ""
   index$in_index <- TRUE
   
+  if( package$rd_knitr ){
+    library(knitr)
+    od <- setwd(package$base_path)
+    on.exit( setwd(od) )
+    knit_rd(package$package, frame=FALSE)
+    setwd(od)
+    on.exit()
+    return(index)
+  }
+  
   for (i in seq_along(index$name)) {
     message("Generating ", basename(paths[[i]]))
     
     rd <- package$rd[[i]]
-    html <- to_html(rd, 
-      env = new.env(parent = globalenv()), 
-      topic = str_replace(basename(paths[[i]]), "\\.html$", ""),
-      package = package)
-    html$pagetitle <- html$name
-
-    html$package <- package[c("package", "version")]
-    html$indextarget <- "_MAN.html"
-    render_page(package, "topic", html, paths[[i]], nonav=TRUE)
-    graphics.off()
-
+      html <- to_html(rd, 
+        env = new.env(parent = globalenv()), 
+        topic = str_replace(basename(paths[[i]]), "\\.html$", ""),
+        package = package)
+      html$pagetitle <- html$name
+  
+      html$package <- package[c("package", "version")]
+      html$indextarget <- "_MAN.html"
+      render_page(package, "topic", html, paths[[i]], nonav=TRUE)
+      graphics.off()
+    
     if ("internal" %in% html$keywords) {
       index$in_index[i] <- FALSE
     }
@@ -123,16 +276,8 @@ build_vignettes <- function(package) {
   if (length(path) == 0) return()
   
   # make quick install to ensure everything is there for building
-  tmplib <- tempfile()
-  dir.create(tmplib)
-  ol <- .libPaths()
-  .libPaths(c(tmplib, .libPaths()))
-  on.exit({
-        .libPaths(ol)
-        unlink(tmplib, recursive=TRUE)
-  }) 
+  tmplib <- install_lib(package)
   message("Building vignettes (", tmplib, ")")
-  pkgmaker::quickinstall(package$path, tmplib, vignettes=TRUE)
   #buildVignettes(dir = package$path)
   
   message("Copying vignettes")

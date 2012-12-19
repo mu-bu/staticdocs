@@ -23,7 +23,7 @@ eval_replay_html <- function(x, envir, package, prefix, ...){
   # loop over the expressions and check if any graphic was generated
   i <- 1
   res <- sapply(ptext$src, function(src, ...){
-        expr <- evaluate(src, envir)
+        expr <- evaluate(src, envir, new_device=FALSE)
         html <- replay_html(expr, package = package, ...)
         while( file.exists(file.path(package$base_path, img <- sprintf(fprefix, i))) ){
           html <- str_c(html,
@@ -102,16 +102,17 @@ replay_html.error <- function(x, ...) {
 
 #' @S3method replay_html recordedplot
 replay_html.recordedplot <- function(x, package, name_prefix, obj_id, ...) {  
-  name <- str_c(name_prefix, obj_id, ".png")
-  path <- file.path(package$base_path, name)
-  
-  if (!file.exists(path)) { 
-    png(path, width = 400, height = 400, res = 96)
-#	TODO: bug here: the device dimension does not match the one used at evaluation time
-#	png(path, width=7, height=7, unit='in', res=72)
-    on.exit(dev.off())
-    print(x)
-  }
+#  name <- str_c(name_prefix, obj_id, ".png")
+#  path <- file.path(package$base_path, name)
+#  
+#  if (!file.exists(path)) { 
+#    png(path, width = 400, height = 400, res = 96)
+##	TODO: bug here: the device dimension does not match the one used at evaluation time
+##	png(path, width=7, height=7, unit='in', res=72)
+#    on.exit(dev.off())
+#    print(x)
+#  }
 
-  str_c("<p><img src='", name, "' alt='' width='400' height='400' /></p>")
+#  str_c("<p><img src='", name, "' alt='' width='400' height='400' /></p>")
+  ''
 }

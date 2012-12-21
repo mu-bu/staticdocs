@@ -29,6 +29,10 @@ build_index <- function(package) {
   package$sections <- sections
   package$rd <- NULL
   
+#  # Render alias cloud
+#  package$topiccloud <- build_alias_cloud(index, package)
+#  package$sections <- NULL
+  
   #generate dedicated documentation index page
   manout <- file.path(package$base_path, "_MAN.html")
   message("Generating ", basename(manout))
@@ -39,6 +43,50 @@ build_index <- function(package) {
   render_icons(package)
   package$pagetitle <- "Index"
   render_page(package, "index", package, out)
+}
+
+build_alias_cloud <- function(index, package){
+  
+  aliases <- sapply(package$topics$name, function(topic){
+    row <- package$topics[package$topics$name == topic, , drop=FALSE]
+    row$alias[[1]] 
+  })
+  l <- sapply(aliases, length)
+  words <- paste('"', names(l), ':', l, '"', sep='', collapse=', ')
+  
+  str_c('<script>
+  var fill = d3.scale.category20();
+
+  d3.layout.cloud().size([300, 300])
+      .words([', words, '].map(function(d) {
+				d = d.split(":");
+        return {text: d[0], size: d[1] * 10};
+      }))
+//      .rotate(function() { return ~~(Math.random() * 2) * 90; })
+      .font("Impact")
+      .fontSize(function(d) { return d.size; })
+      .on("end", draw)
+      .start();
+
+  function draw(words) {
+    d3.select("#cloud").append("svg")
+        .attr("width", 300)
+        .attr("height", 300)
+      .append("g")
+        .attr("transform", "translate(150,150)")
+      .selectAll("text")
+        .data(words)
+      .enter().append("text")
+        .style("font-size", function(d) { return d.size + "px"; })
+        .style("font-family", "Impact")
+        .style("fill", function(d, i) { return fill(i); })
+        .attr("text-anchor", "middle")
+        .attr("transform", function(d) {
+          return "translate(" + [d.x, d.y] + ")"//rotate(" + d.rotate + ")
+        })
+        .text(function(d) { return d.text; });
+  }
+</script>')
 }
 
 build_section <- function(section, package) {

@@ -53,8 +53,8 @@ build_package <- function(package, base_path = NULL, examples = NULL, rd_knitr=F
   
   package$rd_knitr <- rd_knitr
   package$topics <- build_topics(package)
-  package$vignettes <- build_vignettes(package)
-  package$demos <- build_demos(package)
+#  package$vignettes <- build_vignettes(package)
+#  package$demos <- build_demos(package)
   package$readme <- readme(package)
   build_references(package)
   package$citation <- build_citation(package)
@@ -256,6 +256,8 @@ readme <- function(package) {
 copy_bootstrap <- function(base_path) {
   bootstrap <- file.path(inst_path(), "bootstrap")
   file.copy(dir(bootstrap, full.names = TRUE), base_path, recursive = TRUE)
+  d3 <- file.path(inst_path(), "d3")
+  file.copy(dir(d3, full.names = TRUE), base_path, recursive = TRUE)
 }
 
 

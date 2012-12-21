@@ -457,6 +457,10 @@ to_html.itemize <- function(x, ...) {
 to_html.enumerate <- function(x, ...) {
   str_c("<ol>\n", parse_items(x[-1], ...), "</ol>\n")
 }
+#' @S3method to_html describe
+to_html.describe <- function(x, ...) {
+  str_c("<ol>\n", parse_items(x[-1], ...), "</ol>\n")
+}
 
 parse_items <- function(rd, ...) {
   separator <- vapply(rd, function(x) tag(x) == "item", 

@@ -53,9 +53,11 @@ build_package <- function(package, base_path = NULL, examples = NULL, rd_knitr=F
   
   package$rd_knitr <- rd_knitr
   package$topics <- build_topics(package)
-#  package$vignettes <- build_vignettes(package)
-#  package$demos <- build_demos(package)
+  package$vignettes <- build_vignettes(package)
+  package$demos <- build_demos(package)
+  package$mdpages <- build_mdpages(package)
   package$readme <- readme(package)
+  
   build_references(package)
   package$citation <- build_citation(package)
   
@@ -251,6 +253,42 @@ readme <- function(package) {
   if (!file.exists(path)) return( package$description )
   
   markdown(path = path)
+}
+
+build_mdpages <- function(package, index, base_path=NULL) {
+	# pre-process arguments
+	package <- package_info(package, base_path=base_path)
+	
+	# look for md pages
+	path <- pkg_sd_path(package)
+	if ( !length(path) || !file.exists(path)) return()
+	pmd <- "\\.(R)?md$"
+	mdfiles <- list.files(path, pattern=pmd, full.names=TRUE)
+	if( !length(mdfiles) ) return()
+	
+	titles <- sub(pmd, '', basename(mdfiles))
+	
+	message("Rendering MD pages")
+	
+	for(i in seq_along(mdfiles)) {
+		mdf <- mdfiles[i]
+		basef <- basename(mdf)
+		out <- str_c('_PAGE-', sub("\\.(R)?md$", ".html", basef))
+		outfile <- file.path(package$base_path, out)
+		message("Generating page ", basef)
+		html <- list()
+		if( grepl("\\.rmd", mdf, ignore.case=TRUE) ){
+			html$content <- knitr::knit2html(text=readLines(mdf))
+		}else html$content <- markdown(path=mdf)
+		html$indextarget <- 'index.html'
+		html$pagetitle <- NULL
+		html$package <- package
+		render_page(package, "mdpage", html, outfile)
+		# add dedicated head link
+		add_headlink(package, basename(outfile), titles[i])
+	}
+	
+	list(demo=unname(apply(cbind(mdfiles, titles), 1, as.list)))
 }
 
 copy_bootstrap <- function(base_path) {

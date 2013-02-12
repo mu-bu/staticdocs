@@ -21,7 +21,8 @@ package_info <- function(package, base_path = NULL, examples = NULL) {
   out$examples <- examples %||% settings$examples %||% TRUE
 
   if (!is.null(out$url)) {
-    out$urls <- str_trim(str_split(out$url, ",")[[1]])
+    href <- as.list(str_trim(str_split(out$url, ",")[[1]]))
+	out$urls <- list(href=unname(apply(cbind(href=href), 1, as.list)))
     out$url <- NULL
   }
   
@@ -49,6 +50,7 @@ package_info <- function(package, base_path = NULL, examples = NULL) {
     suggests = str_c(parse_deps(out$suggests)$name, collapse = ", "),
     extends = str_c(parse_deps(out$extends)$name, collapse = ", ")
   )
+  out$dependencies <- out$dependencies[!sapply(out$dependencies, identical, '')]
   
   out$rd <- package_rd(package)
   out$rd_index <- topic_index(out$rd)

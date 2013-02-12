@@ -58,10 +58,10 @@
     {{#dependencies}}
     <h2>Dependencies</h2>
     <ul>
-      <li><strong>Depends</strong>: {{depends}}</li>
-      <li><strong>Imports</strong>: {{imports}}</li>
-      <li><strong>Suggests</strong>: {{suggests}}</li>
-      <li><strong>Extends</strong>: {{extends}}</li>
+      {{#depends}}<li><strong>Depends</strong>: {{depends}}</li>{{/depends}}
+      {{#imports}}<li><strong>Imports</strong>: {{imports}}</li>{{/imports}}
+      {{#suggests}}<li><strong>Suggests</strong>: {{suggests}}</li>{{/suggests}}
+      {{#extends}}<li><strong>Extends</strong>: {{extends}}</li>{{/extends}}
     </ul>
     {{/dependencies}}
      
@@ -73,6 +73,15 @@
   		{{/author}}
   	</ul>
 	{{/authors}}
+	
+	{{#urls}}
+  	<h2>Web page(s)</h2>
+  	<ul>
+  		{{#href}}
+  		<li><a href="{{href}}">{{href}}<a/></li>
+  		{{/href}}
+  	</ul>
+	{{/urls}}
     
   </div>
 </div>

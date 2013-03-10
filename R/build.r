@@ -27,6 +27,8 @@ build_package <- function(package, base_path = NULL, examples = NULL, rd_knitr=F
   ol <- .libPaths()
   on.exit({
       if( !is.null(tmplib <- install_lib()) ){
+#		  print(tmplib)
+#		  remove.packages(pkg$package, lib=tmplib)
         .libPaths(ol)
         unlink(tmplib, recursive=TRUE)
        }
@@ -81,11 +83,21 @@ install_lib <- local({
           return(.lib)
         }
         
-        # install package
+        # install package (not working if parallel runs)
         tmplib <- tempfile()
         dir.create(tmplib)
         .libPaths(c(tmplib, file.path(package$path, '..', 'lib'), .libPaths()))
         pkgmaker::quickinstall(package$path, tmplib, vignettes=TRUE)
+		
+#		# if needs to run examples with parallel computations
+#		pkglib <- normalizePath(file.path(package$path, '..', 'lib'))
+#		.libPaths(c(file.path(package$path, '..', 'lib'), .libPaths()))
+#		instlib <- .libPaths()[if( file.exists(pkglib) ) 2L else 1L]
+#		pkgmaker::quickinstall(package$path, instlib, vignettes=TRUE)		
+#		tmplib <- dirname(find.package(package$package))
+#		stopifnot(instlib==tmplib)
+#		##
+				
         .lib <<- tmplib
         .lib
       }

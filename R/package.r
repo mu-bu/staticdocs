@@ -27,19 +27,24 @@ package_info <- function(package, base_path = NULL, examples = NULL) {
   }
   
   # Author info
-  authors <- 
-  if (!is.null(out$`authors@r`)) {
-    authors <- eval(parse(text = out$`authors@r`))
-    format(authors)
-  }else if (!is.null(out$author)) {
-    str_trim(str_split(out$author, ",")[[1]])
+  authors <- list()
+  .format_authors <- function(x){
+	  m <- str_match(x, "([^<]+)\\s*(<([^>]+)>)?(.*)")
+  	  authors <- str_c(m[,2], ifelse( m[,4] != '', str_c('(', cloak_email(m[,4]), ')'), ''), m[,5])
+	  list(author=unname(apply(cbind(name=authors), 1, as.list)))
   }
   
-  if( !is.null(authors) ){
-    m <- str_match(authors, "([^<]+)\\s*(<([^>]+)>)?")
-    authors <- str_c(m[,2], ifelse( m[,4] != '', str_c('(', cloak_email(m[,4]), ')'), ''))
-    out$authors <- list(author=unname(apply(cbind(name=authors), 1, as.list)))
-    out$author <- NULL
+  if (!is.null(out$`authors@r`)) {
+    contrib <- eval(parse(text = out$`authors@r`))
+	authors$contrib <- format(contrib)
+  }
+  if (!is.null(out$author)) {
+	  authors$author <- str_trim(str_split(out$author, ",")[[1]])
+  }
+  authors$maintainer <- if (!is.null(out$maintainer)) out$maintainer
+  # format
+  if( length(authors) ){
+    out$authors <- sapply(authors, .format_authors, simplify=FALSE)
   }
   
   # Dependencies 

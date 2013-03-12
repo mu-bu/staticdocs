@@ -23,16 +23,8 @@ build_package <- function(package, base_path = NULL, examples = NULL, rd_knitr=F
   
   
   # init install lib
-  install_lib(NULL)
-  ol <- .libPaths()
-  on.exit({
-      if( !is.null(tmplib <- install_lib()) ){
-#		  print(tmplib)
-#		  remove.packages(pkg$package, lib=tmplib)
-        .libPaths(ol)
-        unlink(tmplib, recursive=TRUE)
-       }
-  })
+  install_lib(NULL, global=FALSE)
+  on.exit( install_lib(NULL) )
 
   if( rd_knitr ){
     pkg <- as.package(package)
@@ -76,31 +68,54 @@ build_package <- function(package, base_path = NULL, examples = NULL, rd_knitr=F
 
 install_lib <- local({
       .lib <- NULL
-      function(package){
-        if( missing(package) || !is.null(.lib) ) return(.lib)
-        if( is.null(package) ){
+	  .ol <- NULL
+	  .global <- FALSE
+      function(package, global=FALSE){
+		
+		# just return the installation library
+		if( missing(package) || (!is.null(package) && !is.null(.lib)) ) return(.lib)
+	    else if( is.null(package) ){ # init or restoration
+		  if( !is.null(.lib) ){ # restoration
+			  if( .global ){
+				  message("# Removing package from main library '", .lib, "'")
+				  remove.packages(package, lib=.lib)
+			  }else{
+				  message("# Deleting temporary library '", .lib, "'")
+				  unlink(.lib, recursive=TRUE)
+			  }
+			  # restore old lib path
+			  if( !is.null(.ol) ) .libPaths(.ol)
+			  .ol <<- NULL
+		  }else{ # init
+			  .global <<- global
+		  }
+		  .ol <<- .libPaths()
           .lib <<- NULL
           return(.lib)
-        }
-        
-        # install package (not working if parallel runs)
-        tmplib <- tempfile()
-        dir.create(tmplib)
-        .libPaths(c(tmplib, file.path(package$path, '..', 'lib'), .libPaths()))
-        pkgmaker::quickinstall(package$path, tmplib, vignettes=TRUE)
-		
-#		# if needs to run examples with parallel computations
-#		pkglib <- normalizePath(file.path(package$path, '..', 'lib'))
-#		.libPaths(c(file.path(package$path, '..', 'lib'), .libPaths()))
-#		instlib <- .libPaths()[if( file.exists(pkglib) ) 2L else 1L]
-#		pkgmaker::quickinstall(package$path, instlib, vignettes=TRUE)		
-#		tmplib <- dirname(find.package(package$package))
-#		stopifnot(instlib==tmplib)
-#		##
-				
-        .lib <<- tmplib
-        .lib
       }
+	    
+	    # install package in temporary library (NB: not working if parallel runs)
+		if( !.global ){
+			tmplib <- tempfile()
+	        dir.create(tmplib)
+	        .libPaths(c(tmplib, file.path(package$path, '..', 'lib'), .libPaths()))
+			message("# Installing package in temporary library '", tmplib, "'")
+	        pkgmaker::quickinstall(package$path, tmplib, vignettes=TRUE)
+		}else{			
+			# if needs to run examples with parallel computations
+			pkglib <- normalizePath(file.path(package$path, '..', 'lib'))
+			.libPaths(c(file.path(package$path, '..', 'lib'), .libPaths()))
+			instlib <- .libPaths()[if( file.exists(pkglib) ) 2L else 1L]
+			message("# Installing package in main library '", instlib, "'")
+			pkgmaker::quickinstall(package$path, instlib, vignettes=TRUE)
+			tmplib <- dirname(find.package(package$package))
+			stopifnot(instlib==tmplib)
+			##
+		}
+				
+	    .lib <<- tmplib
+	    .lib
+	  }
  })
 
 knit_html <- function(rd, out, links = tools::findHTMLlinks()){

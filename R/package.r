@@ -1,3 +1,30 @@
+
+parse_deps <- function (string, incR=FALSE) 
+{
+	if (is.null(string)) 
+		return()
+	pieces <- strsplit(string, ",")[[1]]
+	names <- gsub("\\s*\\(.*?\\)", "", pieces)
+	names <- gsub("^\\s+|\\s+$", "", names)
+	versions_str <- pieces
+	have_version <- grepl("\\(.*\\)", versions_str)
+	versions_str[!have_version] <- NA
+	compare <- sub(".*\\((\\S+)\\s+.*\\)", "\\1", versions_str)
+	versions <- sub(".*\\(\\S+\\s+(.*)\\)", "\\1", versions_str)
+	compare_nna <- compare[!is.na(compare)]
+	compare_valid <- compare_nna %in% c(">", ">=", "==", "<=", 
+			"<")
+	if (!all(compare_valid)) {
+		stop("Invalid comparison operator in dependency: ", paste(compare_nna[!compare_valid], 
+						collapse = ", "))
+	}
+	deps <- data.frame(name = names, compare = compare, version = versions, 
+			stringsAsFactors = FALSE)
+	
+	if( !incR ) deps <- deps[names != "R", ]
+	deps
+}
+
 #' Return information about a package
 #'
 #' @param package name of package, as character vector
@@ -48,8 +75,10 @@ package_info <- function(package, base_path = NULL, examples = NULL) {
   }
   
   # Dependencies 
-  parse_deps <- devtools:::parse_deps
+  all_deps <- parse_deps(out$depends, incR=TRUE)
+  Rdep <- if( length(iR <- which(all_deps$name == 'R')) ) paste(all_deps[iR, ], collapse=" ")
   out$dependencies <- list(
+	rversion = Rdep,
     depends = str_c(parse_deps(out$depends)$name, collapse = ", "),
     imports = str_c(parse_deps(out$imports)$name, collapse = ", "),
     suggests = str_c(parse_deps(out$suggests)$name, collapse = ", "),

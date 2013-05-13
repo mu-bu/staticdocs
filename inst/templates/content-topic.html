@@ -2,11 +2,23 @@
 
 <div class="row">
   <div class="span8">
+	{{#description}}
+    <div class="description">
+      <h2>Description</h2>
+      
+      {{#contents}}
+      <p>{{{.}}}</p>
+  
+      {{/contents}}
+
+    </div>
+    {{/description}}
+    
     {{#usage}}
     <h2>Usage</h2>
     <pre>{{{usage}}}</pre>
     {{/usage}}
-
+    
     {{#has_args}}
     <h2>Arguments</h2>
     <dl>
@@ -31,7 +43,7 @@
 
     {{#examples }}
     <h2 id="examples">Examples</h2>
-    <pre class="examples">{{{ examples }}}</pre>
+    {{{ examples }}}
     {{/examples}}
   </div>
   <div class="span4">

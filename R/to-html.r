@@ -45,10 +45,11 @@ to_html.Rd_doc <- function(x, ...) {
 
   out$seealso <- to_html(get_tag("seealso"), ...)
   out$examples <- to_html(get_tag("examples"), ...)
+  out$description <- list(contents=to_html(get_tag("description"), topic = out$name,...))
   
   # Everything else stays in original order, and becomes a list of sections.
   sections <- x[!(tags %in% c("name", "title", "alias", "keyword",
-    "usage", "author", "seealso", "arguments", "examples"))]
+    "usage", "author", "seealso", "arguments", "examples", 'description'))]
   out$sections <- compact(to_html(sections, topic = out$name, ...))
   
   out
@@ -196,7 +197,7 @@ parse_section <- function(x, title, ...) {
 #' @importFrom evaluate evaluate
 #' @S3method to_html examples
 to_html.examples <- function(x, package, topic = "unknown", env = new.env(parent = globalenv()), ...) {
-  if (!package$examples) return()
+  if (!package$examples || package$rd_knitr) return()
 
   # First element of examples tag is always empty
   text <- to_html.TEXT(x[-1], ...)

@@ -19,23 +19,17 @@
 #' @import stringr
 #' @importFrom devtools load_all
 #' @aliases staticdocs-package
-build_package <- function(package, base_path = NULL, examples = NULL, rd_knitr=FALSE) {
+build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE) {
   
   
-  # init install lib
+  # init install lib.loc
   install_lib(NULL, global=FALSE)
   on.exit( install_lib(NULL) )
 
-  if( rd_knitr ){
-    pkg <- as.package(package)
-    install_lib(pkg)
-    library(pkg$package, character.only=TRUE)
-  }else{
-    #load_all(package)
-    pkg <- as.package(package)
-    install_lib(pkg)
-    library(pkg$package, character.only=TRUE)
-  }
+  # install package
+  pkg <- as.package(package)
+  lib.loc <- install_lib(pkg)
+  library(pkg$package, lib.loc = lib.loc, character.only=TRUE)
 
   package <- package_info(package, base_path, examples)
   if (!file.exists(package$base_path)) dir.create(package$base_path)
@@ -45,7 +39,7 @@ build_package <- function(package, base_path = NULL, examples = NULL, rd_knitr=F
   add_headlink(NULL)
   package$navbar <- '{{{navbar}}}'
   
-  package$rd_knitr <- rd_knitr
+  package$rd_knitr <- knitr
   package$topics <- build_topics(package)
   package$vignettes <- build_vignettes(package)
   package$demos <- build_demos(package)
@@ -118,106 +112,36 @@ install_lib <- local({
 	  }
  })
 
-knit_html <- function(rd, out, links = tools::findHTMLlinks()){
-  
-  p <- basename(out)
-  message("** knitting documentation of ", p)
-  f <- tempfile()
-  on.exit( unlink(f) )
-  tools::Rd2HTML(rd, f, package = '', Links = links, no_links = is.null(links), stages = "render")
-  message('DONE')
-  txt = readLines(f, warn = FALSE)
-  if (length(i <- grep("<h3>Examples</h3>", txt)) == 1L && 
-      length(grep("</pre>", txt[i:length(txt)]))) {
-    i0 = grep("<pre>", txt)
-    i0 = i0[i0 > i][1L] - 1L
-    i1 = grep("</pre>", txt)
-    i1 = i1[i1 > i0][1L] + 1L
-    tools::Rd2ex(rd, ef <- tempfile())
-    ex = readLines(ef, warn = FALSE)
-    ex = ex[-(1L:grep("### ** Examples", ex, fixed = TRUE))]
-    ex = c("```{r}", ex, "```")
-    opts_chunk$set(fig.path = str_c("figure/", p, "-"), 
-        tidy = FALSE)
-    res = try(knit2html(text = ex, envir = parent.frame(2), 
-            fragment.only = TRUE))
-    if (inherits(res, "try-error")) {
-      res = ex
-      res[1] = "<pre><code class=\"r\">"
-      res[length(res)] = "</code></pre>"
-    }
-    txt = c(txt[1:i0], res, txt[i1:length(txt)])
-    txt = sub("</head>", "\n<link rel=\"stylesheet\" href=\"highlight.css\">\n<script src=\"highlight.pack.js\"></script>\n<script>hljs.initHighlightingOnLoad();</script>\n</head>", 
-        txt)
-  }
-  else message("no examples found for ", p)
-  writeLines(txt, out)
-}
 
-
-function (pkg, links = tools::findHTMLlinks(), frame = TRUE) 
+# taken/adapted from knitr::knit_rd (1.2)
+knit_examples <- function(p, pkgRdDB, links = tools::findHTMLlinks()) 
 {
-  library(pkg, character.only = TRUE)
-  optc = opts_chunk$get()
-  on.exit(opts_chunk$set(optc))
-  file.copy(system.file("misc", c("highlight.css", "highlight.pack.js", 
-                      "R.css"), package = "knitr"), "./")
-  pkgRdDB = tools:::fetchRdDB(file.path(find.package(pkg), 
-                  "help", pkg))
-  force(links)
-  topics = names(pkgRdDB)
-  for (p in topics) {
-    message("** knitting documentation of ", p)
-    tools::Rd2HTML(pkgRdDB[[p]], f <- tempfile(), package = pkg, 
-        Links = links, no_links = is.null(links), stages = "render")
-    txt = readLines(f, warn = FALSE)
-    if (length(i <- grep("<h3>Examples</h3>", txt)) == 1L && 
-        length(grep("</pre>", txt[i:length(txt)]))) {
-      i0 = grep("<pre>", txt)
-      i0 = i0[i0 > i][1L] - 1L
-      i1 = grep("</pre>", txt)
-      i1 = i1[i1 > i0][1L] + 1L
-      tools::Rd2ex(pkgRdDB[[p]], ef <- tempfile())
-      ex = readLines(ef, warn = FALSE)
-      ex = ex[-(1L:grep("### ** Examples", ex, fixed = TRUE))]
-      ex = c("```{r}", ex, "```")
-      opts_chunk$set(fig.path = str_c("figure/", p, "-"), 
-          tidy = FALSE)
-      res = try(knit2html(text = ex, envir = parent.frame(2), 
-              fragment.only = TRUE))
-      if (inherits(res, "try-error")) {
-        res = ex
-        res[1] = "<pre><code class=\"r\">"
-        res[length(res)] = "</code></pre>"
-      }
-      txt = c(txt[1:i0], res, txt[i1:length(txt)])
-      txt = sub("</head>", "\n<link rel=\"stylesheet\" href=\"highlight.css\">\n<script src=\"highlight.pack.js\"></script>\n<script>hljs.initHighlightingOnLoad();</script>\n</head>", 
-          txt)
-    }
-    else message("no examples found for ", p)
-    writeLines(txt, str_c(p, ".html"))
-  }
-  unlink("figure/", recursive = TRUE)
-  toc = sprintf("- <a href=\"%s\" target=\"content\">%s</a>", 
-      str_c(topics, ".html"), topics)
-  toc = c(str_c("# ", pkg), "", toc, "", paste("Generated with [knitr](http://yihui.name/knitr) ", 
-                  packageVersion("knitr")))
-  markdown::markdownToHTML(text = paste(toc, collapse = "\n"), 
-      output = "00frame_toc.html", title = str_c("R Documentation of ", 
-          pkg), options = NULL, extensions = NULL, stylesheet = "R.css")
-  txt = readLines(file.path(find.package(pkg), "html", "00Index.html"))
-  unlink("00Index.html")
-  writeLines(gsub("../../../doc/html/", "http://stat.ethz.ch/R-manual/R-devel/doc/html/", 
-                  txt, fixed = TRUE), "00Index.html")
-  if (!frame) {
-    unlink(c("00frame_toc.html", "index.html"))
-    (if (.Platform$OS.type == "windows") 
-        file.copy
-      else file.symlink)("00Index.html", "index.html")
-    return(invisible())
-  }
-  writeLines(sprintf("<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Frameset//EN\" \"http://www.w3.org/TR/html4/frameset.dtd\">\n<html>\n<head><title>Documentation of the %s package</title></head>\n<frameset cols=\"15%%,*\">\n  <frame src=\"00frame_toc.html\">\n  <frame src=\"00Index.html\" name=\"content\">\n</frameset>\n</html>\n", 
-                  pkg), "index.html")
+	library(knitr)
+	optc = opts_chunk$get()
+	on.exit(opts_chunk$set(optc))
+	force(links)
+#	topics = names(pkgRdDB)
+#	for (p in topics) {
+#		message("** knitting documentation of ", p)
+		ef <- tempfile()
+		tools::Rd2ex(pkgRdDB[[p]], ef, fragment = TRUE)
+		# early exit if there are no examples
+		if( !file.exists(ef) ) return()
+		on.exit(unlink(ef), add=TRUE)
+		ex = readLines(ef, warn = FALSE)
+		ex = ex[-(1L:grep("### ** Examples", ex, fixed = TRUE))]
+		ex = c("```{r}", ex, "```")
+		opts_chunk$set(fig.path = str_c("figure/", p, "-ex"), tidy = FALSE)
+		res = try(knit2html(text = ex, envir = parent.frame(2), fragment.only = TRUE, quiet = TRUE))
+		unlink("figure/", recursive = TRUE)
+		if (inherits(res, "try-error")) {
+			res = ex
+			res[1] = "<pre><code class=\"r\">"
+			res[length(res)] = "</code></pre>"
+		}
+		txt = res
+#	}
+	txt
 }
 
 
@@ -239,13 +163,7 @@ build_topics <- function(package) {
   index$in_index <- TRUE
   
   if( package$rd_knitr ){
-    library(knitr)
-    od <- setwd(package$base_path)
-    on.exit( setwd(od) )
-    knit_rd(package$package, frame=FALSE)
-    setwd(od)
-    on.exit()
-    return(index)
+	pkgRdDB = tools:::fetchRdDB(file.path(path.package(package$package), "help", package$package))
   }
   
   for (i in seq_along(index$name)) {
@@ -257,6 +175,10 @@ build_topics <- function(package) {
         topic = str_replace(basename(paths[[i]]), "\\.html$", ""),
         package = package)
       html$pagetitle <- html$name
+	  if( package$rd_knitr ){# knit examples
+		html$examples <- knit_examples(index$name[i], pkgRdDB)   
+	  }
+		  
   
       html$package <- package[c("package", "version")]
       html$indextarget <- "_MAN.html"
@@ -318,11 +240,18 @@ build_mdpages <- function(package, index, base_path=NULL) {
 	list(demo=unname(apply(cbind(mdfiles, titles), 1, as.list)))
 }
 
+# copy style, javascript files
 copy_bootstrap <- function(base_path) {
+	
+  css_path <- file.path(base_path, 'css')
+  js_path <- file.path(base_path, 'js')
   bootstrap <- file.path(inst_path(), "bootstrap")
   file.copy(dir(bootstrap, full.names = TRUE), base_path, recursive = TRUE)
   d3 <- file.path(inst_path(), "d3")
   file.copy(dir(d3, full.names = TRUE), base_path, recursive = TRUE)
+  # knitr files
+  #file.copy(system.file("misc", c("highlight.css", "R.css"), package = "knitr"), css_path)
+  file.copy(system.file("misc", "highlight.pack.js", package = "knitr"), js_path)
 }
 
 

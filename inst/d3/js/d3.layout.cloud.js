@@ -24,16 +24,15 @@
           i = -1,
           tags = [],
           data = words.map(function(d, i) {
-        return {
-          text: text.call(this, d, i),
-          font: font.call(this, d, i),
-          style: fontStyle.call(this, d, i),
-          weight: fontWeight.call(this, d, i),
-          rotate: rotate.call(this, d, i),
-          size: ~~fontSize.call(this, d, i),
-          padding: cloudPadding.call(this, d, i)
-        };
-      }).sort(function(a, b) { return b.size - a.size; });
+            d.text = text.call(this, d, i);
+            d.font = font.call(this, d, i);
+            d.style = fontStyle.call(this, d, i);
+            d.weight = fontWeight.call(this, d, i);
+            d.rotate = rotate.call(this, d, i);
+            d.size = ~~fontSize.call(this, d, i);
+            d.padding = padding.call(this, d, i);
+            return d;
+          }).sort(function(a, b) { return b.size - a.size; });
 
       if (timer) clearInterval(timer);
       timer = setInterval(step, 0);
@@ -49,7 +48,7 @@
           d.x = (size[0] * (Math.random() + .5)) >> 1;
           d.y = (size[1] * (Math.random() + .5)) >> 1;
           cloudSprite(d, data, i);
-          if (place(board, d, bounds)) {
+          if (d.hasText && place(board, d, bounds)) {
             tags.push(d);
             event.word(d);
             if (bounds) cloudBounds(bounds, d);
@@ -226,7 +225,7 @@
         y = 0,
         maxh = 0,
         n = data.length;
-    di--;
+    --di;
     while (++di < n) {
       d = data[di];
       c.save();
@@ -255,6 +254,7 @@
       c.translate((x + (w >> 1)) / ratio, (y + (h >> 1)) / ratio);
       if (d.rotate) c.rotate(d.rotate * cloudRadians);
       c.fillText(d.text, 0, 0);
+      if (d.padding) c.lineWidth = 2 * d.padding, c.strokeText(d.text, 0, 0);
       c.restore();
       d.width = w;
       d.height = h;
@@ -264,16 +264,17 @@
       d.y1 = h >> 1;
       d.x0 = -d.x1;
       d.y0 = -d.y1;
+      d.hasText = true;
       x += w;
     }
     var pixels = c.getImageData(0, 0, (cw << 5) / ratio, ch / ratio).data,
         sprite = [];
     while (--di >= 0) {
       d = data[di];
+      if (!d.hasText) continue;
       var w = d.width,
           w32 = w >> 5,
-          h = d.y1 - d.y0,
-          p = d.padding;
+          h = d.y1 - d.y0;
       // Zero the buffer
       for (var i = 0; i < h * w32; i++) sprite[i] = 0;
       x = d.xoff;
@@ -285,11 +286,6 @@
         for (var i = 0; i < w; i++) {
           var k = w32 * j + (i >> 5),
               m = pixels[((y + j) * (cw << 5) + (x + i)) << 2] ? 1 << (31 - (i % 32)) : 0;
-          if (p) {
-            if (j) sprite[k - w32] |= m;
-            if (j < w - 1) sprite[k + w32] |= m;
-            m |= (m << 1) | (m >> 1);
-          }
           sprite[k] |= m;
           seen |= m;
         }
@@ -398,9 +394,8 @@
         archimedean: archimedeanSpiral,
         rectangular: rectangularSpiral
       };
-  c.fillStyle = "red";
+  c.fillStyle = c.strokeStyle = "red";
   c.textAlign = "center";
 
   exports.cloud = cloud;
 })(typeof exports === "undefined" ? d3.layout || (d3.layout = {}) : exports);
-

@@ -19,7 +19,7 @@
 #' @import stringr
 #' @importFrom devtools load_all
 #' @aliases staticdocs-package
-build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE) {
+build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE, target = NULL, branch = FALSE) {
   
   
   # init install lib.loc
@@ -30,6 +30,12 @@ build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE
   pkg <- as.package(package)
   lib.loc <- install_lib(pkg)
   library(pkg$package, lib.loc = lib.loc, character.only=TRUE)
+  
+  # generate in branch sub-directory
+  if( isTRUE(branch) ) branch <- git_branch(pkg$path)
+  if( is.character(branch) ) base_path <- file.path(base_path, branch)
+  else branch <- FALSE
+  #
 
   package <- package_info(package, base_path, examples)
   if (!file.exists(package$base_path)) dir.create(package$base_path)
@@ -40,16 +46,23 @@ build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE
   package$navbar <- '{{{navbar}}}'
   
   package$rd_knitr <- knitr
-  package$topics <- build_topics(package)
-  package$vignettes <- build_vignettes(package)
-  package$demos <- build_demos(package)
-  package$mdpages <- build_mdpages(package)
-  package$readme <- readme(package)
   
-  build_references(package)
-  package$citation <- build_citation(package)
+  if( !is.null(target) ){
+      target <- str_trim(strsplit(target, ",")[[1]])
+  }
+  tbuild <- function(x) !length(target) || !nzchar(target) || x %in% target  
   
-  build_index(package)
+  if( tbuild('topics') )  package$topics <- build_topics(package)
+  if( tbuild('vignettes') )  package$vignettes <- build_vignettes(package)
+  if( tbuild('demos') )  package$demos <- build_demos(package)
+  if( tbuild('md') )  package$mdpages <- build_mdpages(package)
+  if( tbuild('readme') )  package$readme <- readme(package)
+  if( tbuild('references') )  build_references(package)
+  if( tbuild('citation') )  package$citation <- build_citation(package)
+  
+  package$versions <- build_versions(package, branch)
+  
+  if( tbuild('index') )  build_index(package)
   
   # render main pages
   build_pages(package)
@@ -94,14 +107,14 @@ install_lib <- local({
 	        dir.create(tmplib)
 	        .libPaths(c(tmplib, file.path(package$path, '..', 'lib'), .libPaths()))
 			message("# Installing package in temporary library '", tmplib, "'")
-	        pkgmaker::quickinstall(package$path, tmplib, vignettes=TRUE)
+	        pkgmaker::quickinstall(package$path, tmplib, vignettes=FALSE)
 		}else{			
 			# if needs to run examples with parallel computations
 			pkglib <- normalizePath(file.path(package$path, '..', 'lib'))
 			.libPaths(c(file.path(package$path, '..', 'lib'), .libPaths()))
 			instlib <- .libPaths()[if( file.exists(pkglib) ) 2L else 1L]
 			message("# Installing package in main library '", instlib, "'")
-			pkgmaker::quickinstall(package$path, instlib, vignettes=TRUE)
+			pkgmaker::quickinstall(package$path, instlib, vignettes=FALSE)
 			tmplib <- dirname(find.package(package$package))
 			stopifnot(instlib==tmplib)
 			##
@@ -130,7 +143,7 @@ knit_examples <- function(p, pkgRdDB, links = tools::findHTMLlinks())
 		on.exit(unlink(ef), add=TRUE)
 		ex = readLines(ef, warn = FALSE)
 		ex = ex[-(1L:grep("### ** Examples", ex, fixed = TRUE))]
-		ex = c("```{r}", ex, "```")
+		ex = c("```{r, message = TRUE, error = TRUE, warning = TRUE}", ex, "```")
 		opts_chunk$set(fig.path = str_c("figure/", p, "-ex"), tidy = FALSE)
 		res = try(knit2html(text = ex, envir = parent.frame(2), fragment.only = TRUE, quiet = TRUE))
 		unlink("figure/", recursive = TRUE)
@@ -166,25 +179,37 @@ build_topics <- function(package) {
 	pkgRdDB = tools:::fetchRdDB(file.path(path.package(package$package), "help", package$package))
   }
   
-  for (i in seq_along(index$name)) {
-    message("Generating ", basename(paths[[i]]))
-    
-    rd <- package$rd[[i]]
-      html <- to_html(rd, 
-        env = new.env(parent = globalenv()), 
-        topic = str_replace(basename(paths[[i]]), "\\.html$", ""),
-        package = package)
-      html$pagetitle <- html$name
-	  if( package$rd_knitr ){# knit examples
-		html$examples <- knit_examples(index$name[i], pkgRdDB)   
-	  }
-		  
+  message("Rendering topic man pages")
+  # load cache
+  cache_file <- load_cache(package, 'topic')
+  on.exit( save(topic_cache, file = cache_file) )
+  #
   
-      html$package <- package[c("package", "version")]
-      html$indextarget <- "_MAN.html"
-      render_page(package, "topic", html, paths[[i]], nonav=TRUE)
-      graphics.off()
+  for (i in seq_along(index$name)) {
+      
+    fhtml <- basename(paths[[i]])
+    rd <- package$rd[[i]]
+    html <- topic_cache$compute(list(fhtml, digest(rd), package$rd_knitr, package$examples), {
+                        
+          message("Generating ", fhtml)
+          html <- to_html(rd, 
+            env = new.env(parent = globalenv()), 
+            topic = str_replace(basename(paths[[i]]), "\\.html$", ""),
+            package = package)
+          html$pagetitle <- html$name
+    	  if( package$rd_knitr ){# knit examples
+    		html$examples <- knit_examples(index$name[i], pkgRdDB)   
+    	  }
+    		  
+      
+          html$package <- package[c("package", "version")]
+          html$indextarget <- "PAGE-MAN.html"
+          graphics.off()
     
+          html
+      })
+
+    render_page(package, "topic", html, paths[[i]], nonav=TRUE)
     if ("internal" %in% html$keywords) {
       index$in_index[i] <- FALSE
     }
@@ -217,12 +242,13 @@ build_mdpages <- function(package, index, base_path=NULL) {
 	
 	titles <- sub(pmd, '', basename(mdfiles))
 	
-	message("Rendering MD pages")
+    tmplib <- install_lib(package)
+	message("Rendering static MD pages (", tmplib, ")")
 	
 	for(i in seq_along(mdfiles)) {
 		mdf <- mdfiles[i]
 		basef <- basename(mdf)
-		out <- str_c('_PAGE-', sub("\\.(R)?md$", ".html", basef))
+		out <- str_c('PAGE-', sub("\\.(R)?md$", ".html", basef))
 		outfile <- file.path(package$base_path, out)
 		message("Generating page ", basef)
 		html <- list()
@@ -251,7 +277,7 @@ copy_bootstrap <- function(base_path) {
   file.copy(dir(d3, full.names = TRUE), base_path, recursive = TRUE)
   # knitr files
   #file.copy(system.file("misc", c("highlight.css", "R.css"), package = "knitr"), css_path)
-  file.copy(system.file("misc", "highlight.pack.js", package = "knitr"), js_path)
+  #file.copy(system.file("misc", "highlight.pack.js", package = "knitr"), js_path)
 }
 
 
@@ -314,13 +340,16 @@ build_references <- function(package, base_path=NULL){
 	ref <- file.path(inst_path(package), 'REFERENCES.bib')
 	if( !file.exists(ref) ) return()
 	
-	outfile <- file.path(package$base_path, '_REFERENCES.html') 
+	outfile <- file.path(package$base_path, 'PAGE-REFERENCES.html') 
 	message("Generating ", basename(outfile))
 	# load bibtex items
-  library(bibtex)
+    library(bibtex)
 	bibs <- read.bib(ref)
-	# format
-	package$references <- lapply(format(bibs, style='html'), function(x) list(bibitems=x))
+    bkeys <- sapply(bibs, function(x) x$key)
+    bibs <- bibs[order(bkeys)]
+    # format
+	hbibs <- format(bibs, style='html')
+    package$references <- lapply(seq_along(bibs), function(i){ list(bibitem = hbibs[i], key = bibs[[i]]$key)}) 
 	
 	# render dedicated file
 	render_page(package, "references", package, outfile)
@@ -359,18 +388,25 @@ build_demos <- function(package, index, base_path=NULL) {
   filename <- str_c("demo-", pieces[,1], ".html")
   title <- pieces[, 2]
   
+  # load cache
+  cache_file <- load_cache(package, 'demo')
+  on.exit( save(demo_cache, file = cache_file) )
+  #
+  
   for(i in seq_along(title)) {
     if( !file.exists(dfile <- in_path[i]) )
       dfile <- sub("\\.r$", ".R", dfile)
-    message("Evaluating demo ", basename(dfile))
+#    message("Parsing demo ", basename(dfile))
     demo_code <- readLines(file.path(demo_dir, dfile))
 #    demo_expr <- evaluate(demo_code, new.env(parent = globalenv()))
 
-    message("Generating demo ", filename[i])
     html <- list()
-    html$demo <- eval_replay_html(demo_code, envir=new.env(parent = globalenv())
+    html$demo <- demo_cache$compute(list(filename[i], digest(demo_code)), {
+                        message("Generating demo ", filename[i])
+                        eval_replay_html(demo_code, envir=new.env(parent = globalenv())
                             , package = package, prefix = str_c(pieces[i], "-demo"))
-    html$indextarget <- "_DEMOS.html"
+                 })
+    html$indextarget <- "PAGE-DEMOS.html"
     html$pagetitle <- title[i]
     html$package <- package
     render_page(package, "demo", html, 
@@ -380,7 +416,7 @@ build_demos <- function(package, index, base_path=NULL) {
   
   package$demos <- list(demo=unname(apply(cbind(filename, title), 1, as.list)))  
   # render dedicated file
-  outfile <- file.path(package$base_path, '_DEMOS.html')
+  outfile <- file.path(package$base_path, 'PAGE-DEMOS.html')
   message("Generating ", basename(outfile))
   render_page(package, "index-demos", package, outfile)
   # add dedicated head link
@@ -389,6 +425,47 @@ build_demos <- function(package, index, base_path=NULL) {
   # return demos
   package$demos
 
+}
+
+build_versions <- function(package, branch = NULL, base_path=NULL) {
+  
+  # pre-process arguments
+  package <- package_info(package, base_path=base_path)
+  bp <- package$base_path
+  
+  message("Writting VERSION file")
+  cat(package$version, file = file.path(bp, 'VERSION'), sep ="\n")
+  
+  res <- list(version = package$version, branch = branch)
+  if( !is.character(branch) ) return(res)
+  if(branch == 'master') res$branch <- 'stable'
+  return( res )
+  
+#  version <- branch
+#  format_version <- function(br, dir){
+#      if( length(br) > 1 )
+#        br_s <- sapply(br, function(x) sprintf("<li><a href=\"%s/index.html\">%s (%s)</a></li>", x[1], x[2], x[1]))
+#      else br_s <- sapply(br, function(x) sprintf("<li>%s</li>", x[1]))
+#      cat(br_s, file = file.path(dir, 'VERSIONS.html'), sep ='\n')
+#  }
+#  
+#  if( !length(version) ){
+#      format_version(package$version, bp)
+#      return('VERSIONS.html')
+#  }
+#  base_all <- dirname(bp)
+#  d <- list.dirs(base_all, recursive = FALSE)
+#  br <- sapply(d, function(x){
+#        if( !file.exists(vf <- file.path(x, 'VERSION')) ) return()
+#        c(basename(x), readLines(vf))
+#    }, simplify = FALSE)
+#  br <- br[sapply(br, length) > 0] 
+#  br_mat <- t(simplify2array(br))
+#  message("Writting VERSIONS file")
+#  print(br_mat)
+#  format_version(br, base_all)
+#  
+#  '../VERSIONS.html'
 }
 
 # wrap a content into the main layout
@@ -436,8 +513,8 @@ build_pages <- function(package, base_path=NULL, layout='default') {
   outpath <- package$base_path
   
   wrap_page(NULL)
-  # substitute head links in all html files starting with '_'
-  files <- dir(outpath, pattern="^_.*\\.html", full.names=TRUE)
+  # substitute head links in all html files starting with '-'
+  files <- dir(outpath, pattern="^PAGE-.*\\.html", full.names=TRUE)
   files <- c(file.path(outpath,'index.html'), files)
   message("Wrapping pages ", paste(basename(files), collapse=", ")," in layout:", layout)
   

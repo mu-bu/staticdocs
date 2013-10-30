@@ -34,3 +34,4 @@ Collate:
     'build-index.r'
     'settings.r'
     'icons.r'
+    'cache.r'

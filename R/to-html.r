@@ -159,7 +159,11 @@ to_html.author <- function(x, ...) to_html.TEXT(x, ...)
 #' @S3method to_html details
 to_html.details <- function(x, ...) parse_section(x, "Details", ...)
 #' @S3method to_html description
-to_html.description <- function(x, ...) parse_section(x, "Description", ...)
+to_html.description <- function(x, ...){
+   res <- parse_section(x, "Description", ...)
+   res[['contents']] <- paste0("<p>", res[['contents']], "</p>", collapse = "\n")
+   res['contents']
+}
 #' @S3method to_html value
 to_html.value <- function(x, ...) parse_section(x, "Value", ...)
 #' @S3method to_html references
@@ -357,8 +361,8 @@ to_html.special <- function(x, ...) {
 	list(ctag=str_c('#', tag), tag=tag, label=str_c("<span class=\"label label-",bootstrap_label,"\">",type,"</span>"))
 }
 Slabels <- list(
-	S3=.Slabel('S3', 'success')
-	, S4=.Slabel('S4', 'important')
+	S3=.Slabel('S3', 'primary')
+	, S4=.Slabel('S4', 'success')
 )
 
 to_html_SMETHOD <- function(label){

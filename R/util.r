@@ -46,3 +46,15 @@ markdown <- function(x = NULL, path = NULL) {
 cloak_email <- function(x){
 	sub('@', ' at ', x, fixed=TRUE)
 }
+
+#' @export
+git_branch <- function(dir, all = FALSE){
+    br <- suppressWarnings(try(system(paste0('cd "', dir, '"; git branch'), intern = TRUE, ignore.stderr = TRUE), silent = TRUE))
+    if( length(br) ){
+          i <- grep("^\\*", br)
+          if( !all ) br <- br[i]
+          br <- str_trim(gsub("^\\* *", '', br))
+          attr(br, 'current') <- i
+    }
+    br
+}

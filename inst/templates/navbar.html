@@ -1,15 +1,39 @@
-<div class="navbar navbar-inverse">
-  <div class="navbar-inner">
-    <div class = "container">
-      <a class="brand" href="index.html">{{#package}}{{package}} {{version}}{{/package}}</a>
-      <div class="nav">
-        <ul class="nav">
-        <li><a href="{{indextarget}}"><i class="icon-home icon-white"></i> Index</a></li>
-       {{#headlinks}}
-       <li><a href="{{target}}">{{face}}</a></li>
-       {{/headlinks}}
-       </ul>
-   	  </div>
-    </div>
+<nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+  <!-- Brand and toggle get grouped for better mobile display -->
+  <div class="navbar-header">
+    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+      <span class="sr-only">Toggle navigation</span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+    </button>
+    <a class="navbar-brand" href="index.html">{{#package}}{{package}}{{/package}}</a>
   </div>
-</div>
+
+  <!-- Collect the nav links, forms, and other content for toggling -->
+  <div class="collapse navbar-collapse navbar-ex1-collapse">
+    <ul class="nav navbar-nav">
+	  <li><a href="{{indextarget}}"><span class="glyphicon glyphicon-home"></span> Index</a></li>
+	  {{#headlinks}}
+       <li><a href="{{target}}">{{face}}</a></li>
+      {{/headlinks}}
+    </ul>
+    <!-- <form class="navbar-form navbar-left" role="search">
+      <div class="form-group">
+        <input type="text" class="form-control" placeholder="Search">
+      </div>
+      <button type="submit" class="btn btn-default">Submit</button>
+    </form>--> 
+    <ul class="nav navbar-nav navbar-right">
+      {{#versions}}
+      <li><p class="navbar-text">Version {{version}}{{#branch}}&nbsp;({{branch}}){{/branch}}&nbsp;</p></li>
+      {{/versions}}
+      <!--<li><p class="navbar-text" onClick="$('#versionMenu').load('{{versions}}')">Version</p></li>
+      <li class="dropdown">
+        <a href="#" class="dropdown-toggle" data-toggle="dropdown">0.18.3 (stable) <b class="caret"></b></a>
+        <ul class="dropdown-menu" id='versionMenu'>
+        </ul>
+      </li>-->
+    </ul>
+  </div><!-- /.navbar-collapse -->
+</nav>

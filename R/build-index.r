@@ -29,51 +29,56 @@ build_index <- function(package) {
   package$sections <- sections
   package$rd <- NULL
   
-#  # Render alias cloud
-#  package$topiccloud <- build_alias_cloud(index, package)
-#  package$sections <- NULL
-  
   #generate dedicated documentation index page
-  manout <- file.path(package$base_path, "_MAN.html")
+  manout <- file.path(package$base_path, "PAGE-MAN.html")
   message("Generating ", basename(manout))
   render_page(package, "man", package, manout)
   # add head link to index page
   add_headlink(package, basename(manout), 'Documentation', prepend=TRUE)
+  
+  # Render alias cloud
+  package$topiccloud <- build_alias_cloud(topic_index)
+  package$sections <- NULL
   
   render_icons(package)
   package$pagetitle <- "Index"
   render_page(package, "index", package, out)
 }
 
-build_alias_cloud <- function(index, package){
+build_alias_cloud <- function(index){
   
-  aliases <- sapply(package$topics$name, function(topic){
-    row <- package$topics[package$topics$name == topic, , drop=FALSE]
-    row$alias[[1]] 
+  aliases <- sapply(index$name, function(topic){
+    row <- index[index$name == topic, , drop=FALSE]
+    row$alias[[1]]
   })
   l <- sapply(aliases, length)
   words <- paste('"', names(l), ':', l, '"', sep='', collapse=', ')
   
   str_c('<script>
-  var fill = d3.scale.category20();
+var fill = d3.scale.category20();
+  wordScale=d3.scale.log().domain([1, ', max(l), ']).range([10, 100]);
+  var w = 960, h = 600;
+ var datawords=[', words, '];
 
-  d3.layout.cloud().size([300, 300])
-      .words([', words, '].map(function(d) {
-				d = d.split(":");
-        return {text: d[0], size: d[1] * 10};
+d3.layout.cloud().size([w, h])
+      .words(datawords.map(function(d) {
+		d = d.split(":");
+        return {key: d[0], value: d[1] * 1};
       }))
-//      .rotate(function() { return ~~(Math.random() * 2) * 90; })
-      .font("Impact")
-      .fontSize(function(d) { return d.size; })
+      .spiral("rectangular")
+      .padding(2)
+      //.rotate(function() { return  ~~(Math.random() * 2) * 90; })
+      .text(function(d) { return d.key; })
+      .fontSize(function(d) { return wordScale(d.value); })
       .on("end", draw)
       .start();
 
   function draw(words) {
     d3.select("#cloud").append("svg")
-        .attr("width", 300)
-        .attr("height", 300)
+        .attr("width", w)
+        .attr("height", h)
       .append("g")
-        .attr("transform", "translate(150,150)")
+        .attr("transform", "translate(" + [w >> 1, h >> 1] + ")")
       .selectAll("text")
         .data(words)
       .enter().append("text")
@@ -81,8 +86,9 @@ build_alias_cloud <- function(index, package){
         .style("font-family", "Impact")
         .style("fill", function(d, i) { return fill(i); })
         .attr("text-anchor", "middle")
+        .attr("class", "cloud-txt")
         .attr("transform", function(d) {
-          return "translate(" + [d.x, d.y] + ")"//rotate(" + d.rotate + ")
+          return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
         })
         .text(function(d) { return d.text; });
   }

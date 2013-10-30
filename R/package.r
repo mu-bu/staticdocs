@@ -64,6 +64,12 @@ package_info <- function(package, base_path = NULL, examples = NULL) {
   if (!is.null(out$`authors@r`)) {
     contrib <- eval(parse(text = out$`authors@r`))
 	authors$contrib <- format(contrib)
+    
+    # extract maintainer from Authors@R 
+    if ( is.null(out$maintainer) ){
+        m <- grep("\\[[^]]*cre[^]]*\\]", format(contrib), value = TRUE)
+        out$maintainer <- str_trim(gsub("\\[[^]]*cre[^]]*\\]", '', m))
+    }
   }
   if (!is.null(out$author)) {
 	  authors$author <- str_trim(str_split(out$author, ",")[[1]])

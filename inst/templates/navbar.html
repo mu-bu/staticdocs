@@ -25,15 +25,14 @@
       <button type="submit" class="btn btn-default">Submit</button>
     </form>--> 
     <ul class="nav navbar-nav navbar-right">
-      {{#versions}}
-      <li><p class="navbar-text">Version {{version}}{{#branch}}&nbsp;({{branch}}){{/branch}}&nbsp;</p></li>
-      {{/versions}}
-      <!--<li><p class="navbar-text" onClick="$('#versionMenu').load('{{versions}}')">Version</p></li>
-      <li class="dropdown">
-        <a href="#" class="dropdown-toggle" data-toggle="dropdown">0.18.3 (stable) <b class="caret"></b></a>
-        <ul class="dropdown-menu" id='versionMenu'>
-        </ul>
-      </li>-->
+      {{#package}}
+      <li><p class="navbar-text">
+      <span style="font-size:14px" class="label label-primary">Version&nbsp;{{version}}</span>
+      {{#is_devel}}
+      &nbsp;<span style="background-color:red" class="badge label-danger">devel</span>
+      {{/is_devel}}
+      &nbsp;</p></li>
+      {{/package}}
     </ul>
   </div><!-- /.navbar-collapse -->
 </nav>

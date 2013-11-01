@@ -58,3 +58,20 @@ git_branch <- function(dir, all = FALSE){
     }
     br
 }
+
+natorder <- function(x, ...){
+    
+    mx <- max(nchar(gsub('[^0-9]', '', x)))
+    num <- strsplit(x, "[^0-9]+")
+    fmt <- gsub('[0-9]+', paste0("%0", mx, "d"), x)
+    num <- lapply(num, function(x) as.numeric(x[nchar(x)>0]))
+    sx <- mapply(function(f, args){
+                if( !length(args) ) return(f)
+                do.call('sprintf', c(f, as.list(args)))
+            }, fmt, num)
+    order(sx, ...)
+}
+
+natsort <- function(x, ...){
+    x[natorder(x, ...)]
+}

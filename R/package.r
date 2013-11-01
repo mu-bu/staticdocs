@@ -70,6 +70,12 @@ package_info <- function(package, base_path = NULL, examples = NULL) {
         m <- grep("\\[[^]]*cre[^]]*\\]", format(contrib), value = TRUE)
         out$maintainer <- str_trim(gsub("\\[[^]]*cre[^]]*\\]", '', m))
     }
+      
+    # extract authors from Authors@R 
+    if ( is.null(out$author) ){
+        m <- grep("\\[[^]]*aut[^]]*\\]", format(contrib), value = TRUE)
+        out$author <- paste0(str_trim(gsub("\\[[^]]*aut[^]]*\\]", '', m)), collapse = ', ')
+    }
   }
   if (!is.null(out$author)) {
 	  authors$author <- str_trim(str_split(out$author, ",")[[1]])

@@ -33,14 +33,21 @@ build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE
   
   # generate in branch sub-directory
   if( isTRUE(branch) ) branch <- git_branch(pkg$path)
-  if( is.character(branch) ) base_path <- file.path(base_path, branch)
-  else branch <- FALSE
+  pkg$is_devel <- build_is_devel(pkg$version, branch)
+  make_landing_page <- FALSE
+  if( is.character(branch) ){
+      base_path <- file.path(base_path, strsplit(branch, .Platform$file.sep)[[1L]][1])
+      make_landing_page <- TRUE
+  }
   #
 
-  package <- package_info(package, base_path, examples)
+  package <- package_info(pkg, base_path, examples)
   if (!file.exists(package$base_path)) dir.create(package$base_path)
   copy_bootstrap(base_path)
 
+  message("Writting VERSION file")
+  cat(package$version, file = file.path(base_path, 'VERSION'), sep ="\n")
+  
   # reset headlinks
   add_headlink(NULL)
   package$navbar <- '{{{navbar}}}'
@@ -60,12 +67,15 @@ build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE
   if( tbuild('references') )  build_references(package)
   if( tbuild('citation') )  package$citation <- build_citation(package)
   
-  package$versions <- build_versions(package, branch)
-  
   if( tbuild('index') )  build_index(package)
   
   # render main pages
   build_pages(package)
+    
+  # render landing page
+  if( make_landing_page ){
+      build_landing(package, base_path)
+  }
   
   if (interactive()) {
     browseURL(normalizePath(file.path(base_path, "index.html")))
@@ -201,15 +211,16 @@ build_topics <- function(package) {
     		html$examples <- knit_examples(index$name[i], pkgRdDB)   
     	  }
     		  
-      
-          html$package <- package[c("package", "version")]
-          html$indextarget <- "PAGE-MAN.html"
           graphics.off()
     
           html
       })
 
-    render_page(package, "topic", html, paths[[i]], nonav=TRUE)
+    pkg_fields <- c("package", "version", 'versions')
+    html[pkg_fields] <- package[pkg_fields]
+    html$indextarget <- "PAGE-MAN.html"
+
+    render_page(package, "topic", html, paths[[i]], navbar=FALSE)
     if ("internal" %in% html$keywords) {
       index$in_index[i] <- FALSE
     }
@@ -410,7 +421,7 @@ build_demos <- function(package, index, base_path=NULL) {
     html$pagetitle <- title[i]
     html$package <- package
     render_page(package, "demo", html, 
-      file.path(package$base_path, filename[i]), nonav=TRUE)
+      file.path(package$base_path, filename[i]), navbar=FALSE)
   }
   
   
@@ -427,45 +438,40 @@ build_demos <- function(package, index, base_path=NULL) {
 
 }
 
-build_versions <- function(package, branch = NULL, base_path=NULL) {
+build_is_devel <- function(version, branch) {
   
-  # pre-process arguments
-  package <- package_info(package, base_path=base_path)
-  bp <- package$base_path
+  devel <- FALSE
+  if( !is.character(branch) ){
+        min <- strsplit(version, '.')[[1]][2]
+        devel <- !is.na(min) && min %% 2 == 1
+  } else devel <- !grepl('^(release)|(master)', branch)
   
-  message("Writting VERSION file")
-  cat(package$version, file = file.path(bp, 'VERSION'), sep ="\n")
-  
-  res <- list(version = package$version, branch = branch)
-  if( !is.character(branch) ) return(res)
-  if(branch == 'master') res$branch <- 'stable'
-  return( res )
-  
-#  version <- branch
-#  format_version <- function(br, dir){
-#      if( length(br) > 1 )
-#        br_s <- sapply(br, function(x) sprintf("<li><a href=\"%s/index.html\">%s (%s)</a></li>", x[1], x[2], x[1]))
-#      else br_s <- sapply(br, function(x) sprintf("<li>%s</li>", x[1]))
-#      cat(br_s, file = file.path(dir, 'VERSIONS.html'), sep ='\n')
-#  }
-#  
-#  if( !length(version) ){
-#      format_version(package$version, bp)
-#      return('VERSIONS.html')
-#  }
-#  base_all <- dirname(bp)
-#  d <- list.dirs(base_all, recursive = FALSE)
-#  br <- sapply(d, function(x){
-#        if( !file.exists(vf <- file.path(x, 'VERSION')) ) return()
-#        c(basename(x), readLines(vf))
-#    }, simplify = FALSE)
-#  br <- br[sapply(br, length) > 0] 
-#  br_mat <- t(simplify2array(br))
-#  message("Writting VERSIONS file")
-#  print(br_mat)
-#  format_version(br, base_all)
-#  
-#  '../VERSIONS.html'
+  if( devel ) TRUE
+  else NULL
+}
+
+build_landing<- function(package, base_path){
+    message('Generate landing page')
+    mdir <- dirname(base_path)
+    outfile <- file.path(mdir, 'index.html')
+    v <- list.dirs(mdir, recursive = FALSE)
+    
+    vs <- lapply(v, function(v){
+                br <- basename(v)
+                if( file.exists(vf <- file.path(v, 'VERSION') ) ){
+                    numv <- readLines(vf)[1L]
+                    res <- list(version = numv, branch = br)
+                    res$is_devel <- build_is_devel(numv, br)
+                    res
+                }
+            })
+    data <- package[c('title', 'description', 'package')]
+    vs <- vs[sapply(vs, length) > 0]
+    data$versions <- vs[natorder(sapply(vs, function(x) paste0(x$version, ifelse(is.null(x$is_devel), '', 'devel'))))]
+    # copy bootstrap css in main dir
+    copy_bootstrap(dirname(outfile))
+    # render page
+    render_page(package, "main", data, outfile, navbar = '', to_top_link = FALSE)
 }
 
 # wrap a content into the main layout

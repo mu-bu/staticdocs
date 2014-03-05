@@ -154,7 +154,7 @@ knit_examples <- function(p, pkgRdDB, links = tools::findHTMLlinks())
 		on.exit(unlink(ef), add=TRUE)
 		ex = readLines(ef, warn = FALSE)
 		ex = ex[-(1L:grep("### ** Examples", ex, fixed = TRUE))]
-		ex = c("```{r, message = TRUE, error = TRUE, warning = TRUE}", ex, "```")
+		ex = c(paste0("```{r rd_example_", p, "_", tempfile(),", message = TRUE, error = TRUE, warning = TRUE}"), ex, "```")
 		opts_chunk$set(fig.path = str_c("figure/", p, "-ex"), tidy = FALSE)
 		res = try(knit2html(text = ex, envir = parent.frame(2), fragment.only = TRUE, quiet = TRUE))
 		unlink("figure/", recursive = TRUE)

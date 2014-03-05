@@ -48,7 +48,7 @@ cloak_email <- function(x){
 }
 
 #' @export
-git_branch <- function(dir, all = FALSE){
+git_branch <- function(dir = '.', all = FALSE){
     br <- suppressWarnings(try(system(paste0('cd "', dir, '"; git branch'), intern = TRUE, ignore.stderr = TRUE), silent = TRUE))
     if( length(br) ){
           i <- grep("^\\*", br)
@@ -57,6 +57,25 @@ git_branch <- function(dir, all = FALSE){
           attr(br, 'current') <- i
     }
     br
+}
+
+git_remote <- function(dir = '.', all = FALSE, git = FALSE){
+    x <- suppressWarnings(try(system(paste0('cd "', dir, '"; git remote -v'), intern = TRUE, ignore.stderr = TRUE), silent = TRUE))
+    if( length(x) ){
+        # push only
+#        x <- grep("\\(push\\)$", x, value = TRUE)
+        i <- grep("^origin.*\\(push\\)$", x)
+        if( !all ) x <- x[i]
+        x <- str_trim(gsub("^.*git@([^ ]+).*", "\\1", x))
+        if( !git ){
+            xs <- str_split(x, ":")
+            x <- sapply(xs, function(x){
+                    sprintf("http://%s/%s", x[1L], gsub('\\.git$', '', x[2L]))  
+                })
+        }
+        x <- unique(x)
+    }
+    x
 }
 
 natorder <- function(x, ...){

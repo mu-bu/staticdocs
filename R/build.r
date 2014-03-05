@@ -289,6 +289,8 @@ copy_bootstrap <- function(base_path) {
   file.copy(dir(bootstrap, full.names = TRUE), base_path, recursive = TRUE)
   d3 <- file.path(inst_path(), "d3")
   file.copy(dir(d3, full.names = TRUE), base_path, recursive = TRUE)
+  # img
+  file.copy(dir(file.path(inst_path(), "img"), full.names = TRUE), file.path(base_path, 'img'), recursive = TRUE)
   # knitr files
   #file.copy(system.file("misc", c("highlight.css", "R.css"), package = "knitr"), css_path)
   #file.copy(system.file("misc", "highlight.pack.js", package = "knitr"), js_path)

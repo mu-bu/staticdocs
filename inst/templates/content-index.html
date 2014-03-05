@@ -97,13 +97,20 @@
 	{{/authors}}
 	
 	{{#urls}}
-  	<h2>Web page(s)</h2>
+  	<h2>Resources</h2>
   	<ul>
   		{{#href}}
-  		<li><a href="{{href}}">{{href}}</a></li>
+  		<li><a href="{{href}}" target="_new">{{href}}</a></li>
   		{{/href}}
   	</ul>
-	{{/urls}}
+  	{{/urls}}
+  	{{#repos}}
+  	<table cellspacing="5" cellpadding="5"><tr>
+		{{#urls}}
+		<td><a href="{{url}}" title="{{url}}" target="_new"><img src="img/{{icon}}" alt="{{url}}"/></a></td>
+		{{/urls}}
+  	</tr></table>
+	{{/repos}}
     
   </div>
 </div>

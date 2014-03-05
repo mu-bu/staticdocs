@@ -46,7 +46,35 @@ package_info <- function(package, base_path = NULL, examples = NULL) {
   out$base_path <- base_path %||% settings$base_path %||% 
     stop("base_path not specified", call. = FALSE)
   out$examples <- examples %||% settings$examples %||% TRUE
-
+  
+  # code repositories
+  out$repos <- list()
+  out$repos[['git']] <- list(icon = "github.png", url = git_remote(out$path))
+  if( length(settings$repos) )
+    lapply(names(settings$repos), function(x){
+        repo <- settings$repos[[x]]
+        # use package name if TRUE
+        if( isTRUE(repo) ) repo <- out$package
+        if( is.character(repo) ){
+            if( x == 'rforge' ){
+                if( !grepl("/", repo, fixed = TRUE) )
+                    repo <- sprintf("http://r-forge.r-project.org/projects/%s", tolower(repo))
+                repo <- list(icon = 'r-forge-icon.png', url = repo)
+            }else if( x == 'github' ){
+                if( !grepl("/", repo, fixed = TRUE) )
+                    repo <- sprintf("https://github.com/%s", repo)
+                repo <- list(icon = 'github.png', url = repo)
+            }else{
+                repo <- list(url = repo)
+            }
+        }
+        out$repos[[x]] <<- repo
+    })
+  out$repos <- Filter(length, out$repos)
+  out$repos <- list(urls = lapply(unname(out$repos), as.list))
+#  print(out$repos)
+  #
+  
   if (!is.null(out$url)) {
     href <- as.list(str_trim(str_split(out$url, ",")[[1]]))
 	out$urls <- list(href=unname(apply(cbind(href=href), 1, as.list)))

@@ -57,7 +57,7 @@ build_alias_cloud <- function(index){
   str_c('<script>
 var fill = d3.scale.category20();
   wordScale=d3.scale.log().domain([1, ', max(l), ']).range([10, 100]);
-  var w = 960, h = 600;
+  var w = 600, h = 600;
  var datawords=[', words, '];
 
 d3.layout.cloud().size([w, h])

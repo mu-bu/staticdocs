@@ -29,6 +29,7 @@ build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE
   # install package
   pkg <- as.package(package)
   lib.loc <- install_lib(pkg)
+  message("Using libraries:\n", paste0("- ", .libPaths(), collapse = "\n"))
   library(pkg$package, lib.loc = lib.loc, character.only=TRUE)
   
   # generate in branch sub-directory
@@ -186,7 +187,9 @@ build_topics <- function(package) {
   index$in_index <- TRUE
   
   if( package$rd_knitr ){
-	pkgRdDB = tools:::fetchRdDB(file.path(path.package(package$package), "help", package$package))
+      RdDBpath <- file.path(find.package(package$package, lib.loc = install_lib()), "help", package$package)
+      message("loading Rd db from: ", RdDBpath)
+	pkgRdDB = tools:::fetchRdDB(RdDBpath)
   }
   
   message("Rendering topic man pages")

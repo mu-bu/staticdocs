@@ -37,8 +37,12 @@ build_index <- function(package) {
   add_headlink(package, basename(manout), 'Documentation', prepend=TRUE)
   
   # Render alias cloud
-  package$topiccloud <- build_alias_cloud(topic_index)
-  package$sections <- NULL
+  nsec <- sapply(package$sections, function(x) length(x$items))
+  package$topiccloud <- ""
+  if( sum(nsec) > 15 || isTRUE(package$use_cloud) ){
+      package$topiccloud <- build_alias_cloud(topic_index)
+      package$sections <- NULL
+  }
   
   render_icons(package)
   package$pagetitle <- "Index"

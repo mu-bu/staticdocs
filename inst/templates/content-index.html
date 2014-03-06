@@ -17,22 +17,22 @@
 	{{{topiccloud}}}
 	
     {{#sections}}
-    <h3>{{title}}</h3>
-    {{{description}}}
-    
-    <ul class="index">
-    {{#items}}
-    {{#icon}}
-      <li class = "icon">
-        <a href="{{file_out}}"><img src="{{icon}}" width = "40" height = "40" /></a><code><a href="{{file_out}}">{{name}}</a></code>{{aliases}}<br /> 
-        {{{title}}}</li>
-    {{/icon}}
-    {{^icon}}
-      <li>
-        <code><a href="{{file_out}}">{{name}}</a></code>{{aliases}}<br />{{{title}}}</li>
-    {{/icon}}
-    {{/items}}
-    </ul>
+	    <h3>{{title}}</h3>
+	    {{{description}}}
+	    
+	    <ul class="index">
+	    {{#items}}
+		    {{#icon}}
+		      <li class = "icon">
+		        <a href="{{file_out}}"><img src="{{icon}}" width = "40" height = "40" /></a><code><a href="{{file_out}}">{{name}}</a></code>{{aliases}}<br /> 
+		        {{{title}}}</li>
+		    {{/icon}}
+		    {{^icon}}
+		      <li>
+		        <code><a href="{{file_out}}">{{name}}</a></code>{{aliases}}<br />{{{title}}}</li>
+		    {{/icon}}
+	    {{/items}}
+	    </ul>
     {{/sections}}
   </div>
   
@@ -102,15 +102,19 @@
   		{{#href}}
   		<li><a href="{{href}}" target="_new">{{href}}</a></li>
   		{{/href}}
+  		{{#bugreport}}
+  		<li><a href="{{url}}" title="{{url}}" target="_new">Bug report</a></li>
+  		{{/bugreport}}
+  		{{#repos}}
+  			<li>Code repositories:
+		  	<p><table><tr>
+				{{#urls}}
+				<td style="padding-right:10px"><a href="{{url}}" title="{{url}}" target="_new"><img src="img/{{icon}}" title="{{url}}" alt="{{url}}"/></a></td>
+				{{/urls}}
+		  	</tr></table></p>
+		{{/repos}}
   	</ul>
   	{{/urls}}
-  	{{#repos}}
-  	<table cellspacing="5" cellpadding="5"><tr>
-		{{#urls}}
-		<td><a href="{{url}}" title="{{url}}" target="_new"><img src="img/{{icon}}" alt="{{url}}"/></a></td>
-		{{/urls}}
-  	</tr></table>
-	{{/repos}}
     
   </div>
 </div>

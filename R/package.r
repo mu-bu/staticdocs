@@ -47,39 +47,20 @@ package_info <- function(package, base_path = NULL, examples = NULL) {
     stop("base_path not specified", call. = FALSE)
   out$examples <- examples %||% settings$examples %||% TRUE
   
-  # code repositories
-  out$repos <- list()
-  out$repos[['git']] <- list(icon = "github.png", url = git_remote(out$path))
-  if( length(settings$repos) )
-    lapply(names(settings$repos), function(x){
-        repo <- settings$repos[[x]]
-        # use package name if TRUE
-        if( isTRUE(repo) ) repo <- out$package
-        if( is.character(repo) ){
-            if( x == 'rforge' ){
-                if( !grepl("/", repo, fixed = TRUE) )
-                    repo <- sprintf("http://r-forge.r-project.org/projects/%s", tolower(repo))
-                repo <- list(icon = 'r-forge-icon.png', url = repo)
-            }else if( x == 'github' ){
-                if( !grepl("/", repo, fixed = TRUE) )
-                    repo <- sprintf("https://github.com/%s", repo)
-                repo <- list(icon = 'github.png', url = repo)
-            }else{
-                repo <- list(url = repo)
-            }
-        }
-        out$repos[[x]] <<- repo
-    })
-  out$repos <- Filter(length, out$repos)
-  out$repos <- list(urls = lapply(unname(out$repos), as.list))
-#  print(out$repos)
-  #
-  
+  out$urls <- list()
   if (!is.null(out$url)) {
     href <- as.list(str_trim(str_split(out$url, ",")[[1]]))
 	out$urls <- list(href=unname(apply(cbind(href=href), 1, as.list)))
     out$url <- NULL
   }
+  
+  # bug report
+  if (!is.null(out$bugreports)) {
+    out$urls$bugreport <- list(url=out$bugreports)
+  }
+  
+  # code repositories
+  out$urls$repos <- extract_repos(out, settings$repos)
   
   # Author info
   authors <- list()
@@ -168,4 +149,74 @@ print.package_info <- function(x, ...) {
     indent = 2, exdent = 2, width = getOption("width"))
   cat("Topics:\n", paste(topics, collapse = "\n"), "\n", sep = "")
   
+}
+
+extract_repos <- function(pkg, settings){
+    
+    # initialise result list
+    repos <- list()
+    # preprend settings
+    repos <- c(settings, repos)
+    
+    # load data from DESCRIPTION
+    if( !is.null(pkg$scm) ){
+        scms <- str_trim(strsplit(pkg$scm, ',')[[1L]])
+        drepos <- sapply(scms, function(x){
+            if( !nzchar(spec <- gsub("([^:]+):?(.*)", "\\2", x)) ) "TRUE"
+            else spec
+        })
+        repos <- c(repos, setNames(drepos, gsub("([^:]+):?.*", "\\1", scms)))
+    }
+    
+    # append github repo infered from path
+    repos <- c(repos, github = git_remote(pkg$path))
+    
+    # load settings data
+    if( !length(repos) ) return()
+    
+#    print(repos)
+#    message('#')
+    
+    # remove duplicated settings
+    names(repos)[grep("^r-?forge$", names(repos))] <- "r-forge"
+    repos <- repos[!duplicated(names(repos))]
+    names(repos) <- tolower(names(repos))
+
+    .is_true_value <- function(x){
+        toupper(as.character(x)) %in% c('TRUE', 'YES')
+    }
+    
+    # process repo specifications
+    lapply(names(repos), function(x){
+        repo <- repos[[x]]
+        # use package name if TRUE
+        if( is.character(repo) || isTRUE(repo) ){
+            if( x %in% c('rforge', 'r-forge') ){
+                if( .is_true_value(repo) ) repo <- pkg$package
+                if( !grepl("/", repo, fixed = TRUE) )
+                    repo <- sprintf("http://r-forge.r-project.org/projects/%s", tolower(repo))
+                repo <- list(icon = 'r-forge-icon.png', url = repo)
+            }else if( x == 'github' ){
+                if( .is_true_value(repo) ){
+                    repo <- setNames(Sys.info()['user'], NULL)
+                    warning("Using github account: ", repo, "\n  NOTE: you may want to specify the user account in the DESCRIPTION file or staticdocs/index.r")
+                }
+                
+                # username only?
+                if( !grepl("/", repo, fixed = TRUE) ) repo <- sprintf("%s/%s", repo, pkg$package)
+                
+                if( !grepl("^http", repo) ) url <- sprintf("https://github.com/%s", repo)
+                else url <- repo
+                repo <- list(icon = 'github.png', url = url)
+            }else{
+                repo <- list(url = repo)
+            }
+        }
+        if( !is.list(repo) ) stop("Invalid repository specification for repo '", x, "': must be a list [", class(repo), "]")
+        repos[[x]] <<- repo
+    })
+    repos <- Filter(length, repos)
+    res <- list(urls = lapply(unname(repos), as.list))
+#    print(res)
+    res
 }

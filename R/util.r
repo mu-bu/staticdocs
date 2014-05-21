@@ -39,8 +39,14 @@ markdown <- function(x = NULL, path = NULL) {
     if (is.null(x) || x == "") return("")
   }
   
-  (markdownToHTML(text = x, file = path, fragment.only = TRUE,
-    options = c("safelink", "use_xhtml", "smartypants")))
+  # build call to markdown (cannot use path = NULL)
+  ca <- as.call(list(as.name('markdownToHTML')
+                    , fragment.only = TRUE
+                    , options = c("safelink", "use_xhtml", "smartypants")))
+  if (is.null(path)) ca$text <- x
+  else ca$file <- path
+  # compile markdown 
+  eval(ca)
 }
 
 cloak_email <- function(x){

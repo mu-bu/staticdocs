@@ -68,7 +68,7 @@ build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE
   if( tbuild('vignettes') )  package$vignettes <- build_vignettes(package)
   if( tbuild('demos') )  package$demos <- build_demos(package)
   if( tbuild('md') )  package$mdpages <- build_mdpages(package)
-  if( tbuild('readme') )  package$readme <- readme(package)
+  if( tbuild('readme') )  package$readme <- build_readme(package)
   if( tbuild('references') )  build_references(package)
   if( tbuild('citation') )  package$citation <- build_citation(package)
   
@@ -237,7 +237,7 @@ build_topics <- function(package) {
   index
 }
 
-readme <- function(package) {
+build_readme <- function(package) {
   if (!is.null(package$readme)) return(markdown(package$readme))
   
   path <- file.path(package$path, "README.md")

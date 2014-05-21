@@ -70,6 +70,7 @@ build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE
   if( tbuild('md') )  package$mdpages <- build_mdpages(package)
   if( tbuild('readme') )  package$readme <- build_readme(package)
   if( tbuild('references') )  build_references(package)
+  if( tbuild('install') )  package$install <- build_install(package)
   if( tbuild('news') )  package$news <- build_news(package)
   if( tbuild('citation') )  package$citation <- build_citation(package)
   
@@ -256,6 +257,14 @@ build_readme <- function(package) {
   markdown(paste0(l, collapse="\n"))
 }
 
+build_install <- function(package) {
+      
+      path <- file.path(package$path, "README")
+      # use description if no README.md is available
+      if (!file.exists(path)) return()
+      render_head_page(package, 'installation', path = path, title = NULL)
+}
+
 build_news <- function(package) {
     
     #path <- package
@@ -285,8 +294,8 @@ build_news <- function(package) {
 	render_page(package, "news", package, outfile)
 	# add dedicated head link
 	add_headlink(package, basename(outfile), 'News')
-	# return news list
-	news
+    # return news list
+    news
 }
 
 build_mdpages <- function(package, index, base_path=NULL) {
@@ -561,6 +570,23 @@ add_headlink <- local({
 		.cache
 	}
 })
+
+render_head_page <- function(package, name, outfile = NULL, x = NULL, path = NULL, index = 'index.html', link = capitalize(name), title = link){
+    
+    if( is.null(outfile) ) outfile <- file.path(package$base_path, sprintf('PAGE-%s.html', toupper(name)))
+    message("Generating menu page ", basename(outfile))
+    html <- list()
+	html$content <- markdown(x = x, path = path)
+	html$indextarget <- index
+	html$pagetitle <- title
+	html$package <- package
+    # render
+    render_page(package, name, html, outfile)
+    # add dedicated head link
+    add_headlink(package, basename(outfile), link)
+    html$content
+}
+
 
 # Adds Navigation Bar
 build_pages <- function(package, base_path=NULL, layout='default') {

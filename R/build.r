@@ -37,9 +37,13 @@ build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE
   pkg$is_devel <- build_is_devel(pkg$version, branch)
   make_landing_page <- FALSE
   if( is.character(branch) ){
+      message("Passed/detected branch: ", branch)
+      # change release into master (development flow is to make integration changes on branch release/)
+      if( grepl("^release", branch) ) branch <- 'master'
       base_path <- file.path(base_path, strsplit(branch, .Platform$file.sep)[[1L]][1])
       make_landing_page <- TRUE
   }
+  message("Generating site in: ", base_path)
   #
 
   package <- package_info(pkg, base_path, examples)
@@ -535,7 +539,7 @@ build_pages <- function(package, base_path=NULL, layout='default') {
       # collapse contents
       contents <- paste(readLines(f, warn=FALSE), collapse="\n")
       # substitute in layout template
-      rendered <- whisker.render(contents, list(navbar=navbar))
+      rendered <- whisker.render(contents, list(navbar = navbar))
       cat(rendered, file = f)
   })
 	invisible()

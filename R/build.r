@@ -539,6 +539,7 @@ build_pages <- function(package, base_path=NULL, layout='default') {
       # collapse contents
       contents <- paste(readLines(f, warn=FALSE), collapse="\n")
       # substitute in layout template
+      navbar <- gsub(sprintf('<li>(<a href="%s")', basename(f)), '<li class="active">\\1', navbar)
       rendered <- whisker.render(contents, list(navbar = navbar))
       cat(rendered, file = f)
   })

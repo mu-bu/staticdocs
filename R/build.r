@@ -244,7 +244,15 @@ readme <- function(package) {
   # use description if no README.md is available
   if (!file.exists(path)) return( package$description )
   
-  markdown(path = path)
+  # remove Travis-CI links
+  l <- readLines(path)
+  l <- str_trim(grep("travis-ci.org", l, value = TRUE, invert = TRUE, fixed = TRUE))
+  l <- l[nchar(l) > 0]
+  if( !length(l) ) return(package$description)
+  #
+  
+  # compile
+  markdown(paste0(l, collapse="\n"))
 }
 
 build_mdpages <- function(package, index, base_path=NULL) {

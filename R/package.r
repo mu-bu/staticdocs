@@ -60,7 +60,8 @@ package_info <- function(package, base_path = NULL, examples = NULL) {
   }
   
   # code repositories
-  out$urls$repos <- extract_repos(out, settings$repos)
+  out$repos <- extract_repos(out, settings$repos)
+  out$urls$repos <- out$repos['urls']
   
   # Author info
   authors <- list()
@@ -178,7 +179,7 @@ extract_repos <- function(pkg, settings){
 #    message('#')
     
     # remove duplicated settings
-    names(repos)[grep("^r-?forge$", names(repos))] <- "r-forge"
+    names(repos)[grep("^r-?forge$", names(repos))] <- "rforge"
     repos <- repos[!duplicated(names(repos))]
     names(repos) <- tolower(names(repos))
 
@@ -220,5 +221,6 @@ extract_repos <- function(pkg, settings){
     repos <- Filter(length, repos)
     res <- list(urls = lapply(unname(repos), as.list))
 #    print(res)
+    res$repos <- repos
     res
 }

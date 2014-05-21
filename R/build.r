@@ -257,12 +257,132 @@ build_readme <- function(package) {
   markdown(paste0(l, collapse="\n"))
 }
 
-build_install <- function(package) {
+build_install <- function(package = NULL) {
+  
+   if( is.null(package) ) package <- package_info('.', '.')
+   
+  install <- ''
+  
+  # look for github SCM => generate default install_github installation page
+  if( length(repos <- package$repos) ){
       
-      path <- file.path(package$path, "README")
-      # use description if no README.md is available
-      if (!file.exists(path)) return()
-      render_head_page(package, 'installation', path = path, title = NULL)
+      message("Generating installation procedures")
+      
+      # CRAN
+      if( !is.null(cran <- repos$repos$cran) ){
+          message("  * CRAN")
+          install <- sprintf("## ![](img/%s) CRAN
+
+Page: %s
+                                              
+The latest release of the package can be installed from source R-forge repository as follows:
+```{r CRAN}
+install.packages(\"%s\")
+```"
+        , cran$icon, cran$url, package$package)
+      }
+      ##
+          
+      # GITHUB
+      if( !is.null(gh <- repos$repos$github) ){
+          
+          message("  * GitHub")
+          gh_cmd <- function(dev = NULL, args = NULL){
+              extra <- ''
+              if( !is.null(dev) ) extra <- sprintf(", '%s'", dev)
+              if( !is.null(args) ) extra <- sprintf("%s, %s", extra, args)
+              gh_data <- str_match(gh$url, "github.com/([^/]+)/([^/]+)")
+              sprintf("install_github('%s', '%s'%s)", gh_data[2], gh_data[3], extra)
+          }
+          
+          if( nzchar(install) ) install <- paste0(install, "\n***\n")
+          install <- sprintf("%s
+
+## ![](img/%s) GitHub
+
+Repository: %s
+
+The package can be installed from source from the GitHub using the `devtools` package as follows:
+```{r gh}
+library(devtools)
+# latest stable version
+%s
+
+# development version
+%s
+```
+
+### Troubleshooting
+The above commands will perform a complete build/installation, which may require a __complete R development environment__.
+This should be fine for standard unix-based R installations (Linux, Mac), but is cannot be taken for granted on Windows machines. 
+
+So if this fails, then try doing a quick install by: 
+  * skipping vignette generation only with argument `build_vignette = FALSE`.
+  * limiting the installation procedure to the strict necessary with argument `quick = TRUE`;
+
+```{r gh_quick}
+library(devtools)
+# latest stable version
+%s
+%s
+
+# development version
+%s
+%s
+```"
+        , install, gh$icon, gh$url
+        , gh_cmd(), gh_cmd('develop')
+        , gh_cmd(args = 'quick = TRUE'), gh_cmd(args = 'build_vignettes = FALSE')
+        , gh_cmd('develop', args = 'quick = TRUE'), gh_cmd('develop', args = 'build_vignettes = FALSE')
+        )
+      }
+      ##
+      
+      # R-forge
+      if( !is.null(rf <- repos$repos$rforge) ){
+          message("  * R-forge")
+          
+          if( nzchar(install) ) install <- paste0(install, "\n***\n")
+          install <- sprintf("%s
+
+## ![](img/%s) R-forge
+
+Project: %s
+
+The latest automated build of the package can be installed from R-forge repository as follows:
+```{r rforge}
+install.packages(\"%s\", repos=\"http://R-Forge.R-project.org\")
+```
+
+### Troubleshooting
+This installation method depends on the package's build status on R-forge, which can be checked on the [project page](%s) > 'R packages' or from R:
+```{r rforge_check}
+'%s' %%in%% rownames(available.packages(contrib.url(\"http://R-Forge.R-project.org\")))
+```"
+        , install, rf$icon, rf$url, package$package, rf$url, package$package)
+    }
+    ##
+    
+      if( nzchar(install) ){
+        install <- paste0("```{r setup, echo = FALSE}
+library(knitr)
+opts_chunk$set(eval = FALSE)
+```
+", install)
+        library(knitr)
+        install <- knit(text = install, envir = new.env())
+      }
+  }
+  
+  # add README content  
+  if( file.exists(path <- file.path(package$path, "README")) ){
+       if( nzchar(install) ) install <- paste0(install, "\n***\n")
+       install <- paste0(install, paste0(readLines(path), collapse = "\n"))
+  }
+  if( !nzchar(install) ) return()
+  
+  render_head_page(package, 'installation', x = install, title = NULL)
+  invisible(install)
 }
 
 build_news <- function(package) {

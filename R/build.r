@@ -70,6 +70,7 @@ build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE
   if( tbuild('md') )  package$mdpages <- build_mdpages(package)
   if( tbuild('readme') )  package$readme <- build_readme(package)
   if( tbuild('references') )  build_references(package)
+  if( tbuild('news') )  package$news <- build_news(package)
   if( tbuild('citation') )  package$citation <- build_citation(package)
   
   if( tbuild('index') )  build_index(package)
@@ -253,6 +254,39 @@ build_readme <- function(package) {
   
   # compile
   markdown(paste0(l, collapse="\n"))
+}
+
+build_news <- function(package) {
+    
+    #path <- package
+    path <- file.path(package$path, "NEWS")
+    # use description if no README.md is available
+    if (!file.exists(path)) return() 
+    
+    outfile <- file.path(package$base_path, 'PAGE-NEWS.html') 
+	message("Generating ", basename(outfile))
+    # re-format NEWS
+    news <- readLines(path)
+    # remove sections
+    news <- grep("^\\*\\*\\*", news, value = TRUE, invert = TRUE)
+    i <- c(grep("^(Changes? in .*)", news), length(news) + 1)
+    html <- list()
+    news <- sapply(seq(1, length(i) - 1), function(j){
+        items <- news[seq(i[j]+1, i[j+1] - 1)]
+        items <- gsub("^([^ ])", "#### \\1", items)
+        items <- gsub("^    o ", "  * ", items)
+        list(
+            title = news[i[j]]      
+            , items = as.list(markdown(items))
+            )
+    }, simplify = FALSE)
+    package$news <- news
+    # render dedicated file
+	render_page(package, "news", package, outfile)
+	# add dedicated head link
+	add_headlink(package, basename(outfile), 'News')
+	# return news list
+	news
 }
 
 build_mdpages <- function(package, index, base_path=NULL) {

@@ -208,6 +208,8 @@ extract_repos <- function(pkg, settings){
                 if( !grepl("^http", repo) ) url <- sprintf("https://github.com/%s", repo)
                 else url <- repo
                 repo <- list(icon = 'github.png', url = url)
+            }else if( x == 'cran' ){
+                repo <- list(icon = "r-icon.jpg", url = sprintf("http://cran.r-project.org/package=%s", pkg$package))
             }else{
                 repo <- list(url = repo)
             }

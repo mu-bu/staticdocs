@@ -257,7 +257,11 @@ build_readme <- function(package) {
   markdown(paste0(l, collapse="\n"))
 }
 
-build_install <- function(package = NULL) {
+build_install <- function(package, base_path = NULL) {
+    
+   # pre-process arguments
+   package <- package_info(package, base_path = base_path)
+	
   
    if( is.null(package) ) package <- package_info('.', '.')
    
@@ -292,8 +296,10 @@ install.packages(\"%s\")
               if( !is.null(dev) ) extra <- sprintf(", '%s'", dev)
               if( !is.null(args) ) extra <- sprintf("%s, %s", extra, args)
               gh_data <- str_match(gh$url, "github.com/([^/]+)/([^/]+)")
-              sprintf("install_github('%s', '%s'%s)", gh_data[2], gh_data[3], extra)
+              sprintf("install_github('%s', '%s'%s)", gh_data[3], gh_data[2], extra)
           }
+          # identify dev branch
+          dev_branch <- grep("^dev", git_branch(package$path, all = TRUE), value = TRUE)
           
           if( nzchar(install) ) install <- paste0(install, "\n***\n")
           install <- sprintf("%s
@@ -331,9 +337,9 @@ library(devtools)
 %s
 ```"
         , install, gh$icon, gh$url
-        , gh_cmd(), gh_cmd('develop')
+        , gh_cmd(), gh_cmd(dev_branch)
         , gh_cmd(args = 'quick = TRUE'), gh_cmd(args = 'build_vignettes = FALSE')
-        , gh_cmd('develop', args = 'quick = TRUE'), gh_cmd('develop', args = 'build_vignettes = FALSE')
+        , gh_cmd(dev_branch, args = 'quick = TRUE'), gh_cmd(dev_branch, args = 'build_vignettes = FALSE')
         )
       }
       ##

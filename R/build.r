@@ -164,11 +164,18 @@ knit_examples <- function(p, pkgRdDB, links = tools::findHTMLlinks())
 		opts_chunk$set(fig.path = str_c("figure/", p, "-ex"), tidy = FALSE)
 		res = try(knit2html(text = ex, envir = parent.frame(2), fragment.only = TRUE, quiet = TRUE))
 		unlink("figure/", recursive = TRUE)
+        #print(substr(res, 1, 200))
 		if (inherits(res, "try-error")) {
 			res = ex
 			res[1] = "<pre><code class=\"r\">"
 			res[length(res)] = "</code></pre>"
-		}
+		}else if( length(grep("## Don.+ show", res)) ){ # remove don't show chunks
+            res <- readLines(textConnection(res))
+            i_start <- grep("## Don.+ show", res)
+            i_hide <- unlist(mapply(seq, i_start + 1, grep("^## End Don.+ show", res), SIMPLIFY = FALSE))
+            res[i_start] <- gsub("## Don.+ show: ", '', res[i_start])
+            res <- paste0(res[-i_hide], collapse = "\n")
+        }
 		txt = res
 #	}
 	txt
@@ -257,6 +264,8 @@ build_readme <- function(package) {
   markdown(paste0(l, collapse="\n"))
 }
 
+.GRAN_repotools <- 'http://tx.technion.ac.il/~renaud/GRAN/repotools.R'
+
 build_install <- function(package, base_path = NULL) {
     
    # pre-process arguments
@@ -279,7 +288,7 @@ build_install <- function(package, base_path = NULL) {
 
 Page: %s
                                               
-The latest release of the package can be installed from source R-forge repository as follows:
+The latest release of the package can be installed from CRAN as follows:
 ```{r CRAN}
 install.packages(\"%s\")
 ```"
@@ -290,19 +299,91 @@ install.packages(\"%s\")
       # GITHUB
       if( !is.null(gh <- repos$repos$github) ){
           
-          message("  * GitHub")
-          gh_cmd <- function(dev = NULL, args = NULL){
-              extra <- ''
-              if( !is.null(dev) ) extra <- sprintf(", '%s'", dev)
-              if( !is.null(args) ) extra <- sprintf("%s, %s", extra, args)
-              gh_data <- str_match(gh$url, "github.com/([^/]+)/([^/]+)")
-              sprintf("install_github('%s', '%s'%s)", gh_data[3], gh_data[2], extra)
-          }
+          
           # identify dev branch
           dev_branch <- grep("^dev", git_branch(package$path, all = TRUE), value = TRUE)
+          header <- ifelse(length(dev_branch), "# latest development version\n", '')
           
-          if( nzchar(install) ) install <- paste0(install, "\n***\n")
-          install <- sprintf("%s
+          # GRAN
+          if( gh$gran ){
+                        
+            message("  * GitHub (via GRAN)")
+            gran_cmd <- function(args = ''){
+                dev <- NULL
+                if( !is.null(repos$repos$cran) ) dev <- TRUE
+                
+                extra <- ''
+                if( nzchar(args) ) args <- paste(",", args)
+                if( isTRUE(dev) ) extra <- ", devel = TRUE"
+
+                gh_data <- str_match(gh$url, "github.com/([^/]+)/([^/]+)")
+                stable <- sprintf("install.pkgs('%s'%s%s)\n", gh_data[3], extra, args)
+                
+                dev <- if( length(dev_branch) ){
+                    extra <- ", devel = 2"
+                    sprintf("\n# DEVELOPMENT\ninstall.pkgs('%s'%s%s)", gh_data[3], extra, args)
+                }
+                paste0(stable, dev)
+            }
+            
+            if( nzchar(install) ) install <- paste0(install, "\n***\n")
+            install <- sprintf("%s
+                                                        
+## ![](img/%s) GitHub <small>(via [GRAN](http://tx.technion.ac.il/~renaud/GRAN/))</small>
+  
+Repository: %s
+ 
+The package can be installed from source from the GitHub using the `repotools` package as follows:
+```{r gran}
+# Install repotools (need to be done only once)
+source('%s')
+
+library(repotools)
+%s%s
+```"
+                    , install, gh$icon, gh$url, .GRAN_repotools
+                    , header, gran_cmd()
+            )
+            
+            # add troubleshooting section if the package has vignettes or src/
+            if(  package$has_src || package$has_vignettes ){
+                install <- sprintf("%s
+
+### Troubleshooting
+The above commands will perform a complete build/installation, which may require a __complete R development environment__.
+This should be fine for standard unix-based R installations (Linux, Mac), but is not installed by default on Windows machines. 
+
+So if this fails, then try doing a quick install by limiting the installation procedure to the strict necessary with argument `quick = TRUE`.
+```{r gran_quick}
+library(repotools)
+%s%s
+```"
+                    , install
+                    , header, gran_cmd(args = 'quick = TRUE')
+                )
+            }
+          }else{
+            message("  * GitHub")
+            ##
+              
+              gh_cmd <- function(dev = NULL, args = NULL){
+                  extra <- ''
+                  if( !is.null(dev) ) extra <- sprintf(", '%s'", dev)
+                  if( !is.null(args) ) extra <- sprintf("%s, %s", extra, args)
+                  gh_data <- str_match(gh$url, "github.com/([^/]+)/([^/]+)")
+                  sprintf("install_github('%s', '%s'%s)", gh_data[3], gh_data[2], extra)
+              }
+              
+              
+              if( nzchar(install) ) install <- paste0(install, "\n***\n")
+              
+              # dev installation command
+              dev_cmd <- ''
+              if( length(dev_branch) ){
+                dev_cmd <- sprintf("\n\n# latest development version\n%s", gh_cmd(dev_branch))
+              }
+              
+              install <- sprintf("%s
 
 ## ![](img/%s) GitHub
 
@@ -311,16 +392,26 @@ Repository: %s
 The package can be installed from source from the GitHub using the `devtools` package as follows:
 ```{r gh}
 library(devtools)
-# latest stable version
-%s
-
-# development version
-%s
-```
+%s%s%s
+```"
+                        , install, gh$icon, gh$url
+                        , header, gh_cmd(), dev_cmd
+                )
+                    
+                # add troubleshooting section if the package has vignettes or src/
+                if(  package$has_src || package$has_vignettes ){
+                    
+                    # dev installation command
+                    dev_cmd <- ''
+                    if( length(dev_branch) ){
+                        dev_cmd <- sprintf("\n\n# latest development version\n%s\n%s", 
+                                            gh_cmd(dev_branch, args = 'quick = TRUE'), gh_cmd(dev_branch, args = 'build_vignettes = FALSE'))
+                    }
+                    install <- sprintf("%s
 
 ### Troubleshooting
 The above commands will perform a complete build/installation, which may require a __complete R development environment__.
-This should be fine for standard unix-based R installations (Linux, Mac), but is cannot be taken for granted on Windows machines. 
+This should be fine for standard unix-based R installations (Linux, Mac), but is not installed by default on Windows machines. 
 
 So if this fails, then try doing a quick install by: 
   * skipping vignette generation only with argument `build_vignette = FALSE`.
@@ -328,21 +419,20 @@ So if this fails, then try doing a quick install by:
 
 ```{r gh_quick}
 library(devtools)
-# latest stable version
+%s# -> no vignette
 %s
-%s
-
-# development version
-%s
-%s
+# -> minimal installation 
+%s%s
 ```"
-        , install, gh$icon, gh$url
-        , gh_cmd(), gh_cmd(dev_branch)
-        , gh_cmd(args = 'quick = TRUE'), gh_cmd(args = 'build_vignettes = FALSE')
-        , gh_cmd(dev_branch, args = 'quick = TRUE'), gh_cmd(dev_branch, args = 'build_vignettes = FALSE')
-        )
+                    , install
+                    , header, gh_cmd(args = 'build_vignettes = FALSE'), gh_cmd(args = 'quick = TRUE')
+                    , dev_cmd
+                    )
+                }
+            }
       }
       ##
+      
       
       # R-forge
       if( !is.null(rf <- repos$repos$rforge) ){
@@ -477,6 +567,9 @@ copy_bootstrap <- function(base_path) {
   #file.copy(system.file("misc", "highlight.pack.js", package = "knitr"), js_path)
 }
 
+list_vignettes <- function(package){
+    dir(file.path(package$path, c("inst/doc", "vignettes")), "((\\.Rnw)|(\\.Rmd))$", full.names = TRUE)
+}
 
 #' List all package vignettes.
 #'
@@ -490,8 +583,7 @@ copy_bootstrap <- function(base_path) {
 #'   title and file name.
 build_vignettes <- function(package) {  
   # Locate source and built versions of vignettes
-  path <- dir(file.path(package$path, c("inst/doc", "vignettes")), ".Rnw", 
-    full.names = TRUE)
+  path <- list_vignettes(package)
   if (length(path) == 0) return()
   
   # make quick install to ensure everything is there for building
@@ -500,9 +592,10 @@ build_vignettes <- function(package) {
   #buildVignettes(dir = package$path)
   
   message("Copying vignettes")
-  path <- list.files(file.path(tmplib, package$package, 'doc'), pattern="\\.Rnw$", full.names=TRUE)
+  path <- list.files(file.path(tmplib, package$package, 'doc'), pattern="((\\.Rnw)|(\\.Rmd))$", full.names=TRUE)
   if (length(path) == 0) return()
   src <- str_replace(path, "\\.Rnw$", ".pdf")
+  src <- str_replace(src, "\\.Rmd$", ".html")
   filename <- basename(src)
   message(paste(filename, collapse="\n"))
   

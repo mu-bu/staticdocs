@@ -57,7 +57,7 @@ build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE
   add_headlink(NULL)
   package$navbar <- '{{{navbar}}}'
   
-  package$rd_knitr <- knitr
+  package$rd_knitr <- package$knitr %||% knitr
   
   if( !is.null(target) ){
       target <- str_trim(strsplit(target, ",")[[1]])

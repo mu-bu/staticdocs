@@ -44,6 +44,7 @@ package_info <- function(package, base_path = NULL, examples = NULL) {
   out$readme <- settings$readme
   # files to install in root
   out$www <- settings$www
+  out$knitr <- settings$knitr
   
   out$base_path <- base_path %||% settings$base_path %||% 
     stop("base_path not specified", call. = FALSE)

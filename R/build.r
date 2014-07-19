@@ -275,7 +275,7 @@ build_readme <- function(package) {
     paste0(res, collapse = "\n")
 }
 
-.GRAN_repotools <- 'http://tx.technion.ac.il/~renaud/GRAN/repotools.R'
+.GRAN_repotools <- 'http://renozao.github.io/repotools/install.R'
 
 build_install <- function(package, base_path = NULL) {
     
@@ -325,13 +325,13 @@ install.packages(\"%s\")
                 
                 extra <- ''
                 if( nzchar(args) ) args <- paste(",", args)
-                if( isTRUE(dev) ) extra <- ", devel = TRUE"
+                if( isTRUE(dev) ) extra <- ", dependencies = '+'"
 
                 gh_data <- str_match(gh$url, "github.com/([^/]+)/([^/]+)")
                 stable <- sprintf("install.pkgs('%s'%s%s)\n", gh_data[3], extra, args)
                 
                 dev <- if( length(dev_branch) ){
-                    extra <- ", devel = 2"
+                    extra <- ", dependencies = '++'"
                     sprintf("\n# DEVELOPMENT\ninstall.pkgs('%s'%s%s)", gh_data[3], extra, args)
                 }
                 paste0(stable, dev)

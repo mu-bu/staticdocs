@@ -42,6 +42,8 @@ package_info <- function(package, base_path = NULL, examples = NULL) {
   out$index <- settings$index
   out$icons <- settings$icon
   out$readme <- settings$readme
+  # files to install in root
+  out$www <- settings$www
   
   out$base_path <- base_path %||% settings$base_path %||% 
     stop("base_path not specified", call. = FALSE)

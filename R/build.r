@@ -73,6 +73,7 @@ build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE
   if( tbuild('install') )  package$install <- build_install(package)
   if( tbuild('news') )  package$news <- build_news(package)
   if( tbuild('citation') )  package$citation <- build_citation(package)
+  if( tbuild('www') )  package$www <- build_www(package)
   
   if( tbuild('index') )  build_index(package)
   
@@ -247,11 +248,16 @@ build_topics <- function(package) {
 }
 
 build_readme <- function(package) {
-  if (!is.null(package$readme)) return(markdown(package$readme))
   
-  path <- file.path(package$path, "README.md")
+  spec <- package$readme
+  if( is.character(spec) ){
+      spec <- gsub("%description%", package$description, spec, fixed = TRUE)
+      return(markdown(spec))
+  }
+  
   # use description if no README.md is available
-  if (!file.exists(path)) return( package$description )
+  if ( isFALSE(spec) || !file.exists(path <- file.path(package$path, "README.md"))) 
+      return( package$description )
   
   # remove Travis-CI links
   l <- readLines(path)
@@ -261,7 +267,12 @@ build_readme <- function(package) {
   #
   
   # compile
-  markdown(paste0(l, collapse="\n"))
+  id <- paste0('readme_', package$package)
+  res <- c(markdown(package$description)
+        , sprintf('<p><a href="#" onclick="return $(\'#%s\').toggle();">+ Details ...</a></p>\n<div id="%s" style="display:none;">', id, id)
+        , markdown(paste0(l, collapse="\n"))
+        , "</div>")
+    paste0(res, collapse = "\n")
 }
 
 .GRAN_repotools <- 'http://tx.technion.ac.il/~renaud/GRAN/repotools.R'
@@ -832,4 +843,34 @@ build_pages <- function(package, base_path=NULL, layout='default') {
   })
 	invisible()
 	
+}
+
+# copy files to root
+build_www <- function(package, base_path = NULL){
+    
+    # pre-process arguments
+    package <- package_info(package, base_path=base_path)
+    outpath <- package$base_path
+    
+    if( is.null(www <- package[['www']]) ) return()
+    
+    message("Installing files to be served: ")
+    res <- sapply(unname(www), function(x){
+        if( !is.character(x) && !length(x) %in% 1:2 ){
+            message("  * WARNING: skipping invalid file specification")
+            return()
+        }
+        if( length(x) == 1L ) x <- c(x, basename(x))
+        
+        src <- x[1]
+        dest <- x[2]
+        
+        if( grepl("^/", dest) ) dest <- paste0("..", dest)
+        message("  * ", src, " -> ", dest, " ... ", appendLF = FALSE)
+        ok <- file.copy(file.path(package$path, src), file.path(outpath, dest), overwrite = TRUE)
+        message(ifelse(ok, 'OK', 'ERROR'))
+        setNames(ok, dest)
+    })
+    message("DONE")
+    res
 }

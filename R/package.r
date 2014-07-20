@@ -88,7 +88,7 @@ package_info <- function(package, base_path = NULL, examples = NULL) {
     # drop emails from maintainer contrib
     lapply(seq_along(contrib), function(i){
         co <- contrib[[i]][[1L]]
-        if( 'cre' %in% co$role) contrib[i]$email <<- NULL
+        if( 'cre' %in% co$role) contrib[i]$email <<- list(NULL)
     })
     
     authors$contrib <- format(contrib)

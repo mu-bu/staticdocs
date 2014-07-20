@@ -80,22 +80,27 @@ package_info <- function(package, base_path = NULL, examples = NULL) {
   
   if (!is.null(out$`authors@r`)) {
     contrib <- eval(parse(text = out$`authors@r`))
-	authors$contrib <- format(contrib)
-    
     # extract maintainer from Authors@R 
     if ( is.null(out$maintainer) ){
         m <- grep("\\[[^]]*cre[^]]*\\]", format(contrib), value = TRUE)
         out$maintainer <- str_trim(gsub("\\[[^]]*cre[^]]*\\]", '', m))
     }
+    # drop emails from maintainer contrib
+    lapply(seq_along(contrib), function(i){
+        co <- contrib[[i]][[1L]]
+        if( 'cre' %in% co$role) contrib[i]$email <<- NULL
+    })
+    
+    authors$contrib <- format(contrib)
       
     # extract authors from Authors@R 
-    if ( is.null(out$author) ){
+    if ( is.null(out[['author']]) ){
         m <- grep("\\[[^]]*aut[^]]*\\]", format(contrib), value = TRUE)
         out$author <- paste0(str_trim(gsub("\\[[^]]*aut[^]]*\\]", '', m)), collapse = ', ')
     }
   }
-  if (!is.null(out$author)) {
-	  authors$author <- str_trim(str_split(out$author, ",")[[1]])
+  if (!is.null(out[['author']])) {
+	  authors$author <- str_trim(str_split(out[['author']], ",")[[1]])
   }
   authors$maintainer <- if (!is.null(out$maintainer)) out$maintainer
   # format

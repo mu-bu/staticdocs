@@ -36,7 +36,7 @@ build_package <- function(package, base_path = NULL, examples = NULL, knitr=TRUE
   if( isTRUE(branch) ) branch <- git_branch(pkg$path)
   pkg$is_devel <- build_is_devel(pkg$version, branch)
   make_landing_page <- FALSE
-  if( is.character(branch) ){
+  if( length(branch) && is.character(branch) ){
       message("Passed/detected branch: ", branch)
       # change release into master (development flow is to make integration changes on branch release/)
       if( grepl("^release", branch) ) branch <- 'master'
@@ -541,6 +541,12 @@ build_mdpages <- function(package, index, base_path=NULL) {
     tmplib <- install_lib(package)
 	message("Rendering static MD pages (", tmplib, ")")
 	
+    .knit <- function(x){
+        od <- setwd(package$base_path)
+        on.exit( setwd(od) )
+        knitr::knit2html(text=readLines(x))
+    }
+    
 	for(i in seq_along(mdfiles)) {
 		mdf <- mdfiles[i]
 		basef <- basename(mdf)
@@ -549,7 +555,7 @@ build_mdpages <- function(package, index, base_path=NULL) {
 		message("Generating page ", basef)
 		html <- list()
 		if( grepl("\\.rmd", mdf, ignore.case=TRUE) ){
-			html$content <- knitr::knit2html(text=readLines(mdf))
+			html$content <- .knit(mdf)
 		}else html$content <- markdown(path=mdf)
 		html$indextarget <- 'index.html'
 		html$pagetitle <- NULL
@@ -731,9 +737,9 @@ build_demos <- function(package, index, base_path=NULL) {
 build_is_devel <- function(version, branch) {
   
   devel <- FALSE
-  if( !is.character(branch) ){
-        min <- strsplit(version, '.')[[1]][2]
-        devel <- !is.na(min) && min %% 2 == 1
+  if( !length(branch) || !is.character(branch) ){
+        min <- strsplit(version, '.', fixed = TRUE)[[1]][2]
+        devel <- !is.na(min) && as.numeric(min) %% 2 == 1
   } else devel <- !grepl('^(release)|(master)', branch)
   
   if( devel ) TRUE

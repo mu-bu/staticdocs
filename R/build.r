@@ -256,7 +256,7 @@ build_readme <- function(package) {
   }
   
   # use description if no README.md is available
-  if ( isFALSE(spec) || !file.exists(path <- file.path(package$path, "README.md"))) 
+  if ( identical(spec, FALSE) || !file.exists(path <- file.path(package$path, "README.md"))) 
       return( package$description )
   
   # remove Travis-CI links

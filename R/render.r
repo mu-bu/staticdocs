@@ -18,6 +18,10 @@ render_page <- function(package, name, data, path = "", navbar=TRUE, to_top_link
   
   # render complete layout
   out <- render_template(package, "layout", name, components)
+  # github links to issues
+#  if( use_github() ){
+#      out <- gsub("((issues?)|(bugs?)|(fixes?))[ ]*#([0-9]+)", "(\\1)[/issues/\\2]", outignore.case = TRUE)
+#  }  
   cat(out, file = path)
 }
 

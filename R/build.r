@@ -505,14 +505,14 @@ build_news <- function(package) {
     news <- readLines(path)
     # remove sections
     news <- grep("^\\*\\*\\*", news, value = TRUE, invert = TRUE)
-    i <- c(grep("^(Changes? in .*)", news), length(news) + 1)
+    i <- c(grep("^[* ]*(Changes? in .*)", news), length(news) + 1)
     html <- list()
     news <- sapply(seq(1, length(i) - 1), function(j){
         items <- news[seq(i[j]+1, i[j+1] - 1)]
         items <- gsub("^([^ ])", "#### \\1", items)
         items <- gsub("^    o ", "  * ", items)
         list(
-            title = news[i[j]]      
+            title = gsub("^[* ]*([^*]+)[* ]*$", "\\1", news[i[j]])      
             , items = as.list(markdown(items))
             )
     }, simplify = FALSE)

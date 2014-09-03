@@ -36,7 +36,7 @@ rows_list <- function(df) {
 #' @importFrom markdown markdownToHTML
 markdown <- function(x = NULL, path = NULL) {
   if (is.null(path)) {
-    if (is.null(x) || x == "") return("")
+    if (is.null(x) || all(!nzchar(x)) ) return("")
   }
   
   # build call to markdown (cannot use path = NULL)

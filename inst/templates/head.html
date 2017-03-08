@@ -23,6 +23,11 @@
 <script src="{{#site}}{{root}}{{/site}}jquery.sticky-kit.min.js"></script>
 <script src="{{#site}}{{root}}{{/site}}pkgdown.js"></script>
 
+<!-- Custom css -->
+$for(css)$
+<link href="$css$" rel="stylesheet">
+$endfor$
+
 <!-- mathjax -->
 <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
 

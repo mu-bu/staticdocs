@@ -85,7 +85,12 @@ render_rmd <- function(pkg,
                        depth = 1L) {
   message("Building article '", output_file, "'")
 
-  format <- build_rmarkdown_format(pkg, depth = depth, data = data, toc = toc)
+  # load custom css from front matter: take css files from first output format
+  front_matter <- rmarkdown::yaml_front_matter(input)
+  custom_css <- front_matter$output$pkgdown$css
+  toc <- front_matter$output$pkgdown$toc %||% toc
+  
+  format <- build_rmarkdown_format(pkg, depth = depth, data = data, toc = toc, css = custom_css)
   on.exit(unlink(format$path), add = TRUE)
 
   path <- rmarkdown::render(
@@ -102,7 +107,8 @@ render_rmd <- function(pkg,
 build_rmarkdown_format <- function(pkg = ".",
                                    depth = 1L,
                                    data = list(),
-                                   toc = TRUE) {
+                                   toc = TRUE,
+                                   css = NULL) {
   # Render vignette template to temporary file
   path <- tempfile(fileext = ".html")
   suppressMessages(
@@ -116,7 +122,8 @@ build_rmarkdown_format <- function(pkg = ".",
       toc_depth = 2,
       self_contained = FALSE,
       theme = NULL,
-      template = path
+      template = path,
+      css = css
     )
   )
 }

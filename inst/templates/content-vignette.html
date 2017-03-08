@@ -14,10 +14,9 @@ $endfor$
       <h4 class="author">$author.name$</h4>
       $if(author.affiliation)$
       <address class="author_afil">
-      $author.affiliation$<br>$endif$
+      $author.affiliation$<br></address>$endif$
       $if(author.email)$
       <a class="author_email" href="mailto:#">$author.email$</a>
-      </address>
       $endif$
       $else$
       <h4 class="author">$author$</h4>

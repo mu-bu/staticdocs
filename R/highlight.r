@@ -132,8 +132,12 @@ pkgdown_detective <- function(x, ...) {
 # Links -------------------------------------------------------------------
 
 link_remote <- function(label, topic, package) {
-  help <- eval(bquote(help(.(topic), .(package))))
-  if (length(help) == 0) {
+  help <- tryCatch(eval(bquote(help(.(topic), .(package))))
+      , error = function(e){
+        warning(msg <- sprintf("Could not find help topic %s::%s [%s]", package, topic, conditionMessage(e)))
+        character()
+      })
+  if (length(help) == 0 || is.list(help) ) {
     return(label)
   }
 
